@@ -1,0 +1,62 @@
+name: Main CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    name: Full Python CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Setup Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Ruff Check
+        run: uv run ruff check .
+
+      - name: Ruff Format Check
+        run: uv run ruff format --check .
+
+      - name: MyPy
+        run: uv run mypy app
+
+      - name: Pytest
+        run: uv run pytest
+
+      - name: FastAPI Import Check
+        run: |
+          uv run python -c \
+            "from app.main import app; print('FastAPI app loaded:', app.title)"
+
+#      - name: Docker Build
+#        run: docker build -t zhiv-backend:test .
+#
+#      - name: Start container
+#        run: |
+#          docker run -d \
+#            --name zhiv-backend \
+#            -p 8000:8000 \
+#            zhiv-backend:test
+#
+#      - name: Health Check
+#        run: |
+#          sleep 5
+#          curl --fail http://localhost:8000/health
+#
+#      - name: Stop container
+#        if: always()
+#        run: docker rm -f zhiv-backend
