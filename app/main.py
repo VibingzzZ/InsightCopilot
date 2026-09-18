@@ -1,8 +1,12 @@
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 
 class HealthResponse(BaseModel):
     status: str
+
+
+app = FastAPI(title="InsightCopilot")
 
 
 @app.get("/health", response_model=HealthResponse)
