@@ -10,9 +10,8 @@ gateway = ModelGateway()
 # deepseek-flash 是"思考模式"推理模型：不支持 json_schema 结构化输出，也不支持工具调用，
 # 只支持 response_format={"type": "json_object"}，且要求 prompt 中必须包含 "json" 字样。
 parser = PydanticOutputParser(pydantic_object=IntentAnalysis)
-structured_llm = (
-    gateway.get_ds_model().bind(response_format={"type": "json_object"}) | parser
-)
+structured_llm = gateway.get_ds_model().bind(response_format={"type": "json_object"}) | parser
+
 
 def intent_node(state: CustomerState) -> CustomerState:
     prompt = INTENT_PROMPT.format(

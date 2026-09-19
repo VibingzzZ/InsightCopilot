@@ -5,9 +5,9 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
+
 # 模型调用网关：为后续模型经济调用做一个铺垫
 class ModelGateway:
-
     def __init__(self):
         self.llm = ChatOpenAI(
             # 调用千问模型

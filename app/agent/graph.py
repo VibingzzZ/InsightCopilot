@@ -13,6 +13,8 @@ def route_by_risk(state: CustomerState) -> str:
     if state["risk_level"] == "high":
         return "adverse"
     return "normal"
+
+
 # 创建一个以CustomerState为状态结构的流程图
 builder = StateGraph(CustomerState)
 
@@ -32,9 +34,9 @@ builder.add_conditional_edges(
     "risk",
     route_by_risk,
     {
-        "normal":"evidence",
-        "adverse":"adverse",
-    }
+        "normal": "evidence",
+        "adverse": "adverse",
+    },
 )
 
 builder.add_edge("evidence", "reply")
