@@ -12,8 +12,8 @@ class CustomerState(TypedDict):
     risk_level: str
 
     # 订单及相关证明
-    order: str
-    evidence: str
+    order: dict[str, str]
+    evidence: list[dict[str, str]]
 
     # 回复草稿
     reply_draft: str

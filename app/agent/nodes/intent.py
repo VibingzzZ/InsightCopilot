@@ -32,8 +32,8 @@ if __name__ == "__main__":
         "current_message": "我的快递怎么还没到？",
         "intent": "",
         "risk_level": "",
-        "order": "",
-        "evidence": "",
+        "order": {},
+        "evidence": [],
         "reply_draft": "",
     }
     result = intent_node(state)
