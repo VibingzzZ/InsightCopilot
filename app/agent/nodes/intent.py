@@ -35,6 +35,7 @@ if __name__ == "__main__":
         "order": {},
         "evidence": [],
         "reply_draft": "",
+        "emotion": "",
     }
     result = intent_node(state)
     print("识别到的意图：", result["intent"])

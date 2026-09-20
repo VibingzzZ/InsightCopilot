@@ -1,6 +1,5 @@
 from langgraph.graph import END, START, StateGraph
 
-from app.agent.nodes import emotion
 from app.agent.nodes.adverse import adverse_node
 from app.agent.nodes.context import context_node
 from app.agent.nodes.emotion import emotion_node
