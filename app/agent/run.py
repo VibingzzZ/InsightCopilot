@@ -9,6 +9,7 @@ if __name__ == "__main__":
         "risk_level": "",
         "order": {},
         "evidence": [],
+        "emotion": "",
         "reply_draft": "",
     }
 

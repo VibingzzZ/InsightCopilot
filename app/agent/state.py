@@ -17,3 +17,6 @@ class CustomerState(TypedDict):
 
     # 回复草稿
     reply_draft: str
+
+    # 用户情绪
+    emotion: str

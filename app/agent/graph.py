@@ -1,7 +1,9 @@
 from langgraph.graph import END, START, StateGraph
 
+from app.agent.nodes import emotion
 from app.agent.nodes.adverse import adverse_node
 from app.agent.nodes.context import context_node
+from app.agent.nodes.emotion import emotion_node
 from app.agent.nodes.evidence import evidence_node
 from app.agent.nodes.intent import intent_node
 from app.agent.nodes.reply import reply_node
@@ -22,6 +24,7 @@ builder = StateGraph(CustomerState)
 builder.add_node("adverse", adverse_node)
 builder.add_node("context", context_node)
 builder.add_node("intent", intent_node)
+builder.add_node("emotion", emotion_node)
 builder.add_node("risk", risk_node)
 builder.add_node("evidence", evidence_node)
 builder.add_node("reply", reply_node)
@@ -29,7 +32,8 @@ builder.add_node("reply", reply_node)
 
 builder.add_edge(START, "context")
 builder.add_edge("context", "intent")
-builder.add_edge("intent", "risk")
+builder.add_edge("intent", "emotion")
+builder.add_edge("emotion", "risk")
 builder.add_conditional_edges(
     "risk",
     route_by_risk,
