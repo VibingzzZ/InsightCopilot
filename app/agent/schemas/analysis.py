@@ -13,3 +13,6 @@ class RiskExtraction(BaseModel):
     adverse_reaction: bool = Field(description="用户是否出现不良反应（红肿、疼痛、起疹等）")
     symptoms: list[str] = Field(description="症状关键词列表，如 ['脸红','疼痛']；无则空列表")
     medical_visit: bool = Field(description="用户是否明确表示已就医/去医院")
+
+class ReplyDraft(BaseModel):
+    reply: str = Field(description="生成给用户的回复文案")
