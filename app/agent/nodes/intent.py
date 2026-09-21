@@ -31,6 +31,7 @@ if __name__ == "__main__":
         "conversation_id": "test-001",
         "current_message": "我的快递怎么还没到？",
         "intent": "",
+        "risk": {"adverse_reaction": False, "symptoms": [], "medical_visit": False},
         "risk_level": "",
         "order": {},
         "evidence": [],

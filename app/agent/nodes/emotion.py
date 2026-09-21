@@ -32,6 +32,7 @@ if __name__ == "__main__":
         "current_message": "我的快递怎么还没到？",
         "intent": "",
         "emotion": "",
+        "risk": {"adverse_reaction": False, "symptoms": [], "medical_visit": False},
         "risk_level": "",
         "order": {},
         "evidence": [],
