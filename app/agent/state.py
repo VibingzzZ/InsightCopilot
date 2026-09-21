@@ -1,22 +1,37 @@
-from typing import TypedDict
-
+from operator import add
+from typing import Annotated, TypedDict
 
 # 实现Node间共享数据
 class CustomerState(TypedDict):
-    # 上下文及对话ID
+    # 输入
     conversation_id: str
     current_message: str
 
-    # 风险等级和目的
+    # 理解层
     intent: str
-    risk_level: str
-
-    # 订单及相关证明
-    order: dict[str, str]
-    evidence: list[dict[str, str]]
-
-    # 回复草稿
-    reply_draft: str
-
-    # 用户情绪
     emotion: str
+
+    # 风险层
+    risk: RiskInfo        # Risk Extraction 产出（LLM）  # noqa: F821
+    risk_level: str       # Risk Engine 判定（代码）：normal / medium / high
+
+    # 数据层
+    order: dict[str, str]  # 工具查询结果
+
+    # 证据层（用 add reducer 累加：节点返回新增条目，LangGraph 自动 append）
+    evidence: Annotated[list[EvidenceItem], add]  # noqa: F821
+
+    # 表达层
+    reply_draft: str
+    
+class RiskInfo(TypedDict):
+    """"Risk Extraction 的结构化啊输出，由LLM提取"""
+    adverse_reaction: bool
+    symptoms: list[str]
+    medical_visit: bool
+
+class EvidenceItem(TypedDict):
+    """统一证据结构：Reply 只信这一层，不信原始数据。"""
+    source: str  # order / ticket / logistics / ...
+    id: str
+    content: str
