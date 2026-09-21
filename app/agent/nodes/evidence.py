@@ -6,11 +6,13 @@ def evidence_node(state: CustomerState) -> dict:
     items = []
 
     if order:
-        items.append({
-            "source": "order",
-            "id": order["order_id"],
-            "content": f"订单状态：{order['status']}",
-        })
+        items.append(
+            {
+                "source": "order",
+                "id": order["order_id"],
+                "content": f"订单状态：{order['status']}",
+            }
+        )
 
     # 未来追加：
     # items.append({"source": "ticket", "id": "T001", "content": "客服工单处理中"})

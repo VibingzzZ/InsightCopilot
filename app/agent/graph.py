@@ -42,7 +42,7 @@ builder.add_conditional_edges(
 )
 builder.add_edge("tool_query", "evidence")
 builder.add_edge("evidence", "reply")
-builder.add_edge("adverse", "reply")   # ← 关键：high 分支也汇入 reply
+builder.add_edge("adverse", "reply")  # ← 关键：high 分支也汇入 reply
 builder.add_edge("reply", END)
 
 graph = builder.compile()
