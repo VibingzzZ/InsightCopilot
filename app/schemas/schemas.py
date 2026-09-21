@@ -1,4 +1,4 @@
-#用 Pydantic 实现对 detail_json 的严格白名单控制，禁止支付宝实名/账号等隐私字段进入
+# 用 Pydantic 实现对 detail_json 的严格白名单控制，禁止支付宝实名/账号等隐私字段进入
 
 
 from pydantic import BaseModel, ConfigDict
@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 class ExtraBaseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")  # 禁止白名单之外的字段
+
 
 # 1. 补发换货工单
 class ReplenishmentExchangeDetail(ExtraBaseModel):
@@ -15,6 +16,7 @@ class ReplenishmentExchangeDetail(ExtraBaseModel):
     warehouse: str | None = None
     replacement_tracking_masked: str | None = None
     expedite: bool | None = False
+
 
 # 2. 线下打款工单
 class OfflinePaymentDetail(ExtraBaseModel):
@@ -26,6 +28,7 @@ class OfflinePaymentDetail(ExtraBaseModel):
     alipay_name_masked: str | None = None
     alipay_account_masked: str | None = None
 
+
 # 3. 物流工单
 class LogisticsDetail(ExtraBaseModel):
     problem_type: str | None = None
@@ -34,6 +37,7 @@ class LogisticsDetail(ExtraBaseModel):
     warehouse: str | None = None
     solution: str | None = None
     abnormal_flag: bool | None = False
+
 
 # 4. 不良反应工单
 class AdverseReactionDetail(ExtraBaseModel):
@@ -48,6 +52,7 @@ class AdverseReactionDetail(ExtraBaseModel):
     stopped_use: bool | None = True
     sought_medical_help: bool | None = False
     follow_up_status: str | None = None
+
 
 # 5. 售后退货工单
 class ReturnDetail(ExtraBaseModel):

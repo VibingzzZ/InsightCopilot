@@ -1,4 +1,4 @@
-#模拟数据导入与脱敏工具
+# 模拟数据导入与脱敏工具
 
 import hashlib
 
@@ -13,13 +13,15 @@ from models import (
 
 def hash_nickname(nickname: str) -> str:
     """对原始昵称求哈希，原始值不写库"""
-    return hashlib.sha256(nickname.encode('utf-8')).hexdigest()
+    return hashlib.sha256(nickname.encode("utf-8")).hexdigest()
+
 
 def mask_display_name(name: str) -> str:
     """脱敏展示名称，如：魏h**"""
     if not name:
         return "用户**"
     return name[0] + "**"
+
 
 def seed_baseline_data():
     db = SessionLocal()
@@ -29,7 +31,7 @@ def seed_baseline_data():
             consumer_id="C00015",
             display_name_masked=mask_display_name("魏海波"),
             nickname_hash=hash_nickname("魏海波_raw_nick"),
-            risk_level="L0"
+            risk_level="L0",
         )
         db.merge(c1)
 
@@ -41,7 +43,7 @@ def seed_baseline_data():
             scene_major="售后",
             scene_minor="补发",
             status="open",
-            last_message_at=utc_now().isoformat()
+            last_message_at=utc_now().isoformat(),
         )
         db.merge(s1)
 
@@ -53,7 +55,7 @@ def seed_baseline_data():
             occurred_at=utc_now().isoformat(),
             actor_type="buyer",
             title="会话初始化",
-            content="消费者进入会话 S00015"
+            content="消费者进入会话 S00015",
         )
         db.add(evt)
 
@@ -64,6 +66,7 @@ def seed_baseline_data():
         print(f"数据插入失败: {e}")
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     seed_baseline_data()

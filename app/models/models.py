@@ -9,8 +9,10 @@ from app.core.database import Base
 def utc_now():
     return datetime.now(UTC)
 
+
 def generate_uuid():
     return str(uuid.uuid4())
+
 
 # 1. 消费者表
 class Consumer(Base):

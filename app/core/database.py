@@ -1,4 +1,4 @@
-#数据库连接配置
+# 数据库连接配置
 
 import sqlite3
 
@@ -13,7 +13,8 @@ engine = create_engine(
     echo=False,
 )
 
-# 开启 SQLite 外键约束与 WAL 模式   
+
+# 开启 SQLite 外键约束与 WAL 模式
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     if isinstance(dbapi_connection, sqlite3.Connection):
@@ -21,6 +22,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor.execute("PRAGMA foreign_keys=ON;")
         cursor.execute("PRAGMA journal_mode=WAL;")
         cursor.close()
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
