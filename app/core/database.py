@@ -1,6 +1,7 @@
 #数据库连接配置
 
 import sqlite3
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -12,7 +13,7 @@ engine = create_engine(
     echo=False,
 )
 
-# 开启 SQLite 外键约束与 WAL 模式
+# 开启 SQLite 外键约束与 WAL 模式   
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     if isinstance(dbapi_connection, sqlite3.Connection):

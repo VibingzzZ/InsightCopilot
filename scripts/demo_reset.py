@@ -1,7 +1,8 @@
 #Demo演示一键重置逻辑
 
 from database import SessionLocal
-from models import ActionExecution, Promise, AIAnalysis, ServiceEvent, AuditLog, utc_now
+from models import ActionExecution, AIAnalysis, AuditLog, Promise
+
 
 def reset_demo_state():
     """3秒内完成演示环境重置"""

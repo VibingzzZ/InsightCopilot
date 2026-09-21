@@ -1,12 +1,13 @@
 import uuid
-from datetime import datetime, timezone
-from sqlalchemy import (
-    Column, Text, Integer, Boolean, ForeignKey, UniqueConstraint, Index
-)
+from datetime import UTC, datetime
+
+from sqlalchemy import Boolean, Column, ForeignKey, Index, Integer, Text, UniqueConstraint
+
 from app.core.database import Base
 
+
 def utc_now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 def generate_uuid():
     return str(uuid.uuid4())

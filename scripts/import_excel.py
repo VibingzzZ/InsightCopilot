@@ -1,8 +1,15 @@
 #模拟数据导入与脱敏工具
 
 import hashlib
+
 from database import SessionLocal
-from models import Consumer, ServiceSession, Message, SalesOrder, ServiceTicket, ServiceEvent, utc_now
+from models import (
+    Consumer,
+    ServiceEvent,
+    ServiceSession,
+    utc_now,
+)
+
 
 def hash_nickname(nickname: str) -> str:
     """对原始昵称求哈希，原始值不写库"""
