@@ -1,9 +1,13 @@
 # 模拟数据导入与脱敏工具
 
 import hashlib
+import os
+import sys
 
-from database import SessionLocal
-from models import (
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.core.database import SessionLocal
+from app.models.models import (
     Consumer,
     ServiceEvent,
     ServiceSession,
@@ -46,6 +50,9 @@ def seed_baseline_data():
             last_message_at=utc_now().isoformat(),
         )
         db.merge(s1)
+
+        # merge 到 flush 之前不会真正落库，先落库再插事件，否则外键约束会失败
+        db.flush()
 
         # 3. 创建时间线事件
         evt = ServiceEvent(
