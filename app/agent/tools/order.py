@@ -1,19 +1,39 @@
-MOCK_ORDERS = {
-    "0001": {
-        "order_id": "0001",
-        "status": "退款处理中",
-        "product": "某护肤产品",
-        "logistics": "暂无物流信息",
-    },
-    "0002": {
-        "order_id": "0002",
-        "status": "已发货",
-        "product": "某面霜",
-        "logistics": "运输中，预计 2 天后送达",
-    },
-}
+"""订单事实字段访问器。
+
+订单数据由后端在 CopilotRequest.orders 里查好传入，Agent 不查库。
+后端字段名可能有差异，这里统一做「多候选 key + 回退」，避免因为改名炸掉链路。
+"""
+
+_ORDER_ID_KEYS = ("order_id", "order_no", "id")
+_ORDER_STATUS_KEYS = ("order_status", "status")
+_ORDER_PRODUCT_KEYS = ("product_name", "sku")
+_ORDER_BATCH_KEYS = ("batch_no_masked", "batch_no")
+_ORDER_TRACKING_KEYS = ("tracking_no_masked", "tracking_no")
 
 
-def query_order(order_id: str) -> dict:
-    """查询订单。V1 用 mock 数据，后续接真实数据库/接口。"""
-    return MOCK_ORDERS.get(order_id, {})
+def _pick(source: dict, keys: tuple[str, ...]) -> str:
+    for key in keys:
+        value = source.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def order_id_of(order: dict) -> str:
+    return _pick(order, _ORDER_ID_KEYS)
+
+
+def order_status_of(order: dict) -> str:
+    return _pick(order, _ORDER_STATUS_KEYS)
+
+
+def product_name_of(order: dict) -> str:
+    return _pick(order, _ORDER_PRODUCT_KEYS)
+
+
+def batch_no_of(order: dict) -> str:
+    return _pick(order, _ORDER_BATCH_KEYS)
+
+
+def tracking_of(order: dict) -> str:
+    return _pick(order, _ORDER_TRACKING_KEYS)

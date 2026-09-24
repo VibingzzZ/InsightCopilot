@@ -1,4 +1,13 @@
-sqlalchemy>=2.0.0
-pydantic>=2.0.0
-pandas>=2.0.0
-openpyxl>=3.1.0
+# 与 pyproject.toml 的 [project].dependencies 保持一致。
+# CI 以 pyproject.toml + uv.lock 为准，这里只是给不用 uv 的环境一份可复现的清单。
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+langgraph>=1.0
+langchain-core>=1.0
+langchain-openai>=1.0
+openai>=1.0
+python-dotenv>=1.0
+sqlalchemy>=2.0
+pandas>=2.0
+openpyxl>=3.1
