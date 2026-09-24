@@ -1,7 +1,12 @@
 # Demo演示一键重置逻辑
 
-from database import SessionLocal
-from models import ActionExecution, AIAnalysis, AuditLog, Promise
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.core.database import SessionLocal
+from app.models.models import ActionExecution, AIAnalysis, AuditLog, Promise
 
 
 def reset_demo_state():

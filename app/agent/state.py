@@ -1,42 +1,66 @@
-from operator import add
+"""Agent 图共享状态。"""
+
+from operator import add, or_
 from typing import Annotated, TypedDict
 
-
-# 实现Node间共享数据
-class CustomerState(TypedDict):
-    # 输入
-    conversation_id: str
-    current_message: str
-
-    # 理解层
-    intent: str
-    emotion: str
-
-    # 风险层
-    risk: RiskInfo  # Risk Extraction 产出（LLM）  # noqa: F821
-    risk_level: str  # Risk Engine 判定（代码）：normal / medium / high
-
-    # 数据层
-    order: dict[str, str]  # 工具查询结果
-
-    # 证据层（用 add reducer 累加：节点返回新增条目，LangGraph 自动 append）
-    evidence: Annotated[list[EvidenceItem], add]  # noqa: F821
-
-    # 表达层
-    reply_draft: str
+from app.agent.schemas.contract import EvidenceRef
 
 
 class RiskInfo(TypedDict):
-    """ "Risk Extraction 的结构化啊输出，由LLM提取"""
+    """Risk Extraction 的结构化输出，由 LLM 提取，Risk Engine 只读它做规则判定。"""
 
     adverse_reaction: bool
+    severity: str  # none / mild / obvious / severe，用于区分 L1 与 L2
     symptoms: list[str]
     medical_visit: bool
+    regulatory_complaint: bool  # 监管投诉 / 舆情曝光 / 明确威胁
 
 
-class EvidenceItem(TypedDict):
-    """统一证据结构：Reply 只信这一层，不信原始数据。"""
+class FactCheck(TypedDict):
+    """Reply 草稿的事实校验结果，由确定性代码产出。"""
 
-    source: str  # order / ticket / logistics / ...
-    id: str
-    content: str
+    status: str  # pass / needs_review
+    unverified_claims: list[str]
+    blocked: bool
+
+
+class CustomerState(TypedDict):
+    # 输入层：由 CopilotRequest 预组装，Agent 不查库
+    session_id: str
+    customer_name_masked: str
+    current_message: str
+    messages: list[dict]
+    orders: list[dict]
+    tickets: list[dict]
+    promises: list[dict]
+    mode: str  # auto / real / mock
+
+    # 理解层
+    intent: dict  # {primary, secondary, entities}
+    emotion: str
+    emotion_trend: str
+
+    # 风险层
+    risk: RiskInfo
+    risk_level: str  # L0 / L1 / L2 / L3
+    risk_reasons: list[str]
+
+    # 数据层：从 orders / tickets 关联出的当前任务相关事实
+    linked_order: dict
+    linked_tickets: list[dict]
+
+    # 证据层（add reducer：节点只返回新增条目，LangGraph 自动累加）
+    evidence: Annotated[list[EvidenceRef], add]
+
+    # 处置层
+    missing_fields: list[str]
+    suggested_actions: list[str]
+    adverse: dict | None
+
+    # 表达层
+    reply_draft: str
+    fact_check: FactCheck
+
+    # 可观测性：任一节点降级则整体标记降级，所以用 or_ 而不是覆盖
+    degraded: Annotated[bool, or_]
+    model_route: str
