@@ -28,6 +28,9 @@ REPLY_PROMPT = """
 处理建议：
 {suggested_actions}
 
+历史轨迹摘要：
+{timeline_summary}
+
 要求：
 1. 回复必须基于提供的业务证据。
 2. 不得编造订单状态、退款时间等不存在的信息。
@@ -60,6 +63,9 @@ REPLY_PROMPT_HIGH_RISK = """
 
 处理建议：
 {suggested_actions}
+
+历史轨迹摘要：
+{timeline_summary}
 
 处置基准话术（必须以此为骨架，不得改变其中的就医建议和升级承诺）：
 {safe_reply}
