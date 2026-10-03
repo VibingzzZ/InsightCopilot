@@ -16,7 +16,7 @@ RiskLevel = Literal["L0", "L1", "L2", "L3"]
 AdverseGrade = Literal["L1", "L2", "L3"]  # L0 不进不良反应专项
 ModelRoute = Literal["fast", "reasoning", "vision", "mock"]
 AgentMode = Literal["auto", "real", "mock"]
-SourceType = Literal["chat", "order", "ticket", "rule", "action", "image"]
+SourceType = Literal["chat", "order", "ticket", "rule", "action"]
 PromiseType = Literal["refund", "follow_up", "replenishment", "logistics", "other"]
 OwnerType = Literal["store", "agent", "team", "system"]
 
@@ -40,7 +40,6 @@ class CopilotRequest(BaseModel):
     orders: list[dict[str, Any]] = Field(default_factory=list)
     tickets: list[dict[str, Any]] = Field(default_factory=list)
     promises: list[dict[str, Any]] = Field(default_factory=list)
-    events: list[dict[str, Any]] = Field(default_factory=list)
     mode: AgentMode = "auto"
 
 
@@ -57,7 +56,6 @@ class CopilotInsight(BaseModel):
     missing_fields: list[str] = Field(default_factory=list)
     suggested_actions: list[str] = Field(default_factory=list)
     evidence: list[EvidenceRef] = Field(default_factory=list)
-    timeline_summary: str | None = None
     model_route: ModelRoute = "mock"
     degraded: bool = False
 
@@ -73,8 +71,6 @@ class AdverseAssessment(BaseModel):
     symptom_summary: str = ""
     medical_visit: bool = False
     stopped_use: bool | None = None
-    image_clarity: str | None = None
-    image_type: str | None = None
     missing_fields: list[str] = Field(default_factory=list)
     ticket_draft: dict[str, Any] | None = None  # CREATE_TICKET 的 draft_payload
     safe_reply: str | None = None

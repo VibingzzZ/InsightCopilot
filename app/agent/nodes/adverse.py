@@ -41,9 +41,8 @@ def _mentions(state: CustomerState, words: tuple[str, ...]) -> bool:
     return any(any(word in text for word in words) for text in _texts(state))
 
 
-def _image_known(state: CustomerState) -> bool:
-    """图片是否已可识别（清晰）。没有图片或图片待识别都算缺失。"""
-    return (state.get("vision") or {}).get("clarity") == "清晰"
+def _has_image(state: CustomerState) -> bool:
+    return any((message.get("content_type") == "image") for message in (state.get("messages") or []))
 
 
 def _has_batch_no(state: CustomerState) -> bool:
@@ -57,7 +56,7 @@ _FIELD_CHECKS: tuple[tuple[str, Callable[[CustomerState], bool]], ...] = (
     ("症状出现时间", lambda state: _mentions(state, _OCCURRENCE_WORDS)),
     ("是否停止使用", lambda state: _mentions(state, _STOPPED_WORDS)),
     ("是否就医", lambda state: bool(state["risk"].get("medical_visit"))),
-    ("图片或门诊资料", _image_known),
+    ("图片或门诊资料", _has_image),
 )
 
 
@@ -144,15 +143,12 @@ def adverse_node(state: CustomerState) -> dict:
     missing = _missing_fields(state)
     actions = _build_actions(grade)
     symptom_summary = _symptom_summary(state)
-    vision = state.get("vision") or {}
 
     assessment = AdverseAssessment(
         grade=grade,
         symptom_summary=symptom_summary,
         medical_visit=bool(state["risk"].get("medical_visit")),
         stopped_use=None,  # 未知就留空，由客服确认，不猜
-        image_clarity=vision.get("clarity"),
-        image_type=vision.get("image_type"),
         missing_fields=missing,
         ticket_draft=None if grade == "L1" else _build_ticket_draft(state, grade),
         safe_reply=_safe_reply(grade, symptom_summary, product_name),

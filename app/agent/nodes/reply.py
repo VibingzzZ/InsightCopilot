@@ -31,7 +31,6 @@ def reply_node(state: CustomerState) -> dict:
         evidence=_evidence_lines(state) or "暂无系统可核验的事实",
         suggested_actions=state.get("suggested_actions") or [],
         safe_reply=safe_reply,
-        timeline_summary=state.get("timeline_summary") or "无历史轨迹",
         format_instructions=format_instructions(ReplyDraft),
     )
 

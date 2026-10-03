@@ -74,7 +74,7 @@ def test_evidence_is_traceable():
     assert result.insight.evidence
     for item in result.insight.evidence:
         assert item.source_id
-        assert item.source_type in {"chat", "order", "ticket", "rule", "action", "image"}
+        assert item.source_type in {"chat", "order", "ticket", "rule", "action"}
 
 
 def test_mock_mode_marks_degraded():

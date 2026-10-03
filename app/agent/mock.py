@@ -15,8 +15,6 @@ from app.agent.schemas.analysis import (
     PromiseExtraction,
     ReplyDraft,
     RiskExtraction,
-    TrajectorySummary,
-    VisionExtraction,
 )
 
 # 不良反应症状词
@@ -57,27 +55,12 @@ LOGISTICS_WORDS = ("快递", "物流", "发货", "到货", "签收", "包裹", "
 _ORDER_NO_RE = re.compile(r"\d{6,}")
 
 
-# 否定词：紧邻关键词之前的否定会取消命中（「没有红肿」「不痒」不算不良反应）
-_NEGATION_WORDS = ("没有", "没", "不是", "并非", "不", "无", "未", "否认", "排除")
-
-
-def _is_negated(text: str, pos: int) -> bool:
-    """判断 text 中 pos 处的关键词是否被其前面紧邻的否定词修饰。"""
-    window = text[max(0, pos - 4) : pos]
-    return any(neg in window for neg in _NEGATION_WORDS)
-
-
-def _word_hit(text: str, word: str) -> bool:
-    """关键词命中且至少有一处未被否定。"""
-    return any(not _is_negated(text, m.start()) for m in re.finditer(re.escape(word), text))
-
-
 def _hit(text: str, words: tuple[str, ...]) -> bool:
-    return any(_word_hit(text, word) for word in words)
+    return any(word in text for word in words)
 
 
 def _hits(text: str, words: tuple[str, ...]) -> list[str]:
-    return [word for word in words if _word_hit(text, word)]
+    return [word for word in words if word in text]
 
 
 def mock_intent(message: str) -> IntentAnalysis:
@@ -189,54 +172,3 @@ def mock_promise(message_text: str) -> PromiseExtraction:
         owner_type="agent",
         confidence=0.6 if has_promise else 0.0,
     )
-
-
-def mock_vision(images: list[dict]) -> VisionExtraction:
-    """图片识别 Mock。
-
-    有真实图片数据（url / b64 / path）时返回确定性的「清晰 / 患处照片」；
-    只有占位（如 [图片]）时返回「待识别」，交人工确认 —— 绝不编造图中内容。
-    """
-    if not images:
-        return VisionExtraction()
-
-    first = images[0]
-    if any(first.get(key) for key in ("image_url", "image_b64", "image_path")):
-        return VisionExtraction(
-            image_type="患处照片",
-            clarity="清晰",
-            batch_no=first.get("batch_no_masked") or first.get("batch_no") or "",
-            visible_symptoms=["局部泛红"],
-            extra_fields={},
-        )
-    return VisionExtraction()
-
-
-def mock_summary(
-    events: list[dict],
-    messages: list[dict],
-    orders: list[dict],
-    tickets: list[dict],
-    promises: list[dict],
-) -> TrajectorySummary:
-    """轨迹摘要 Mock：把最近的历史事件标题串成一句，事件 ID 一并保留用于溯源。"""
-    lines: list[str] = []
-    ids: list[str] = []
-
-    for event in (events or [])[-5:]:
-        eid = event.get("event_id") or event.get("id") or ""
-        title = event.get("title") or event.get("event_type") or ""
-        if title:
-            lines.append(str(title))
-            if eid:
-                ids.append(str(eid))
-
-    if not lines:
-        if promises:
-            lines.append("存在历史服务承诺")
-        elif orders:
-            lines.append("存在关联订单")
-        else:
-            lines.append("暂无跨会话历史轨迹")
-
-    return TrajectorySummary(summary="；".join(lines), relevant_event_ids=ids)
