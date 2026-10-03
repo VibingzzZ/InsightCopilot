@@ -17,6 +17,7 @@ import json
 import sys
 from typing import Any
 
+from app.agent import cost
 from app.agent.graph import graph
 from app.agent.nodes.promise import extract_promise_candidate
 from app.agent.schemas.contract import (
@@ -56,6 +57,20 @@ CASES: dict[str, dict[str, Any]] = {
                 }
             ],
             tickets=[],
+            events=[
+                {
+                    "event_id": "E-DEMO-001",
+                    "event_type": "promise",
+                    "occurred_at": "2026-09-10T18:00:00+08:00",
+                    "title": "客服承诺 3 个工作日内回复退款结果",
+                },
+                {
+                    "event_id": "E-DEMO-002",
+                    "event_type": "message",
+                    "occurred_at": "2026-09-13T09:00:00+08:00",
+                    "title": "消费者再次进线催办退款",
+                },
+            ],
         )
     },
     "物流": {
@@ -110,6 +125,20 @@ CASES: dict[str, dict[str, Any]] = {
                 }
             ],
             tickets=[],
+            events=[
+                {
+                    "event_id": "E-DEMO-101",
+                    "event_type": "order",
+                    "occurred_at": "2026-09-01T10:00:00+08:00",
+                    "title": "消费者下单舒缓修护面霜",
+                },
+                {
+                    "event_id": "E-DEMO-102",
+                    "event_type": "message",
+                    "occurred_at": "2026-10-03T09:00:00+08:00",
+                    "title": "消费者反馈使用后脸红疼痛",
+                },
+            ],
         )
     },
 }
@@ -129,6 +158,7 @@ def _make_state(request: CopilotRequest) -> CustomerState:
         "orders": request.orders,
         "tickets": request.tickets,
         "promises": request.promises,
+        "events": request.events,
         "mode": request.mode,
         # 理解层
         "intent": {},
@@ -153,9 +183,11 @@ def _make_state(request: CopilotRequest) -> CustomerState:
         "missing_fields": [],
         "suggested_actions": [],
         "adverse": None,
+        "vision": None,
         # 表达层
         "reply_draft": "",
         "fact_check": {"status": "pass", "unverified_claims": [], "blocked": False},
+        "timeline_summary": "",
         # 可观测性
         "degraded": False,
         "model_route": "mock",
@@ -164,7 +196,12 @@ def _make_state(request: CopilotRequest) -> CustomerState:
 
 def run_copilot(request: CopilotRequest) -> CopilotResult:
     """跑一遍副驾链路。不改变任何业务状态。"""
-    final = graph.invoke(_make_state(request))
+    cost.set_session(request.session_id)
+    try:
+        final = graph.invoke(_make_state(request))
+    finally:
+        cost.set_session(None)
+
     intent = final.get("intent") or {}
     adverse = final.get("adverse")
 
@@ -181,6 +218,7 @@ def run_copilot(request: CopilotRequest) -> CopilotResult:
             missing_fields=final.get("missing_fields") or [],
             suggested_actions=final.get("suggested_actions") or [],
             evidence=final.get("evidence") or [],
+            timeline_summary=final.get("timeline_summary") or None,
             model_route=final.get("model_route", "mock"),
             degraded=bool(final.get("degraded")),
         ),
@@ -192,7 +230,11 @@ def run_copilot(request: CopilotRequest) -> CopilotResult:
 
 def extract_promises(req: PromiseExtractRequest) -> PromiseExtractResult:
     """抽取客服消息里的服务承诺候选。只给候选，建单由人工确认。"""
-    return extract_promise_candidate(req)
+    cost.set_session(req.session_id)
+    try:
+        return extract_promise_candidate(req)
+    finally:
+        cost.set_session(None)
 
 
 def _print_case(name: str, result: CopilotResult) -> None:

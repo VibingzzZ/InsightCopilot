@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "schema": {
+    "切分单位": "session_id：同一会话不会同时出现在 train 与 test",
+    "messages[].expected": "意图一级/二级、情绪、风险等级的人工金标准",
+    "promises[].expected": "承诺抽取的人工金标准"
+  },
+  "sessions": {
+    "S-DEMO-001": {
+      "messages": [
+        {
+          "message_id": "M-001",
+          "message_text": "我上周买的那瓶精华，退款怎么还没到账？都三天了",
+          "expected": {
+            "intent_primary": "订单服务",
+            "intent_secondary": "退款迟迟不到账",
+            "emotion": "焦虑",
+            "risk_level": "L0"
+          }
+        }
+      ]
+    },
+    "S-DEMO-002": {
+      "messages": [
+        {
+          "message_id": "M-101",
+          "message_text": "我的快递三天没动静了，到底什么时候能到？",
+          "expected": {
+            "intent_primary": "物流问题",
+            "intent_secondary": "物流停滞未更新",
+            "emotion": "焦虑",
+            "risk_level": "L0"
+          }
+        }
+      ]
+    },
+    "S-DEMO-003": {
+      "messages": [
+        {
+          "message_id": "M-201",
+          "message_text": "用了你们的面霜脸特别红，很疼，已经去医院了",
+          "expected": {
+            "intent_primary": "不良反应",
+            "intent_secondary": "过敏就医",
+            "emotion": "焦虑",
+            "risk_level": "L3"
+          }
+        }
+      ]
+    }
+  },
+  "promises": [
+    {
+      "message_text": "明天上午给您安排退款到账",
+      "expected": {"has_promise": true, "promise_type": "refund"}
+    },
+    {
+      "message_text": "我们会尽快给您回访",
+      "expected": {"has_promise": true, "promise_type": "follow_up", "needs_confirmation": true}
+    },
+    {
+      "message_text": "好的，感谢您的反馈",
+      "expected": {"has_promise": false, "promise_type": "other"}
+    }
+  ]
+}

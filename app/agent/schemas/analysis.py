@@ -45,3 +45,16 @@ class PromiseExtraction(BaseModel):
     due_expression: str = Field(default="", description="时间的原始表达，如 '明天上午'、'3个工作日'；无则留空")
     owner_type: str = Field(default="agent", description="store / agent / team / system")
     confidence: float = Field(default=0.0, description="置信度 0 到 1")
+
+
+class VisionExtraction(BaseModel):
+    image_type: str = Field(default="未知", description="图片类型：患处照片 / 门诊资料 / 产品批次图 / 快递面单 / 其他")
+    clarity: str = Field(default="待识别", description="清晰度：清晰 / 模糊 / 无法识别 / 待识别")
+    batch_no: str = Field(default="", description="图中可见的批次号，无则空")
+    visible_symptoms: list[str] = Field(default_factory=list, description="图中可见现象描述（仅描述，不诊断）")
+    extra_fields: dict[str, str] = Field(default_factory=dict, description="门诊资料/面单上可读的字段")
+
+
+class TrajectorySummary(BaseModel):
+    summary: str = Field(description="跨会话轨迹摘要，只保留与当前任务相关的事件")
+    relevant_event_ids: list[str] = Field(default_factory=list, description="摘要引用的历史事件 ID，用于溯源")

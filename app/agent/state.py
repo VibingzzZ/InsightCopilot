@@ -33,6 +33,7 @@ class CustomerState(TypedDict):
     orders: list[dict]
     tickets: list[dict]
     promises: list[dict]
+    events: list[dict]
     mode: str  # auto / real / mock
 
     # 理解层
@@ -56,10 +57,12 @@ class CustomerState(TypedDict):
     missing_fields: list[str]
     suggested_actions: list[str]
     adverse: dict | None
+    vision: dict | None
 
     # 表达层
     reply_draft: str
     fact_check: FactCheck
+    timeline_summary: str
 
     # 可观测性：任一节点降级则整体标记降级，所以用 or_ 而不是覆盖
     degraded: Annotated[bool, or_]
