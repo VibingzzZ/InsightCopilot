@@ -5,15 +5,17 @@
 # - 当前阶段已下线：承诺只读视图与 Agent 分析快照（代码保留，见文件末尾说明）。
 
 import uuid
+
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session as DbSession
 
-from app.models import Message, ServiceEvent   # 已有 ServiceSession 就合并
-from app.core.time_utils import to_api_time    # to_iso / utc_now 已在
-from app.core.time_utils import to_iso, utc_now
-from app.schemas.api import SessionMessageCreateRequest
 from app.core.errors import session_not_found
-from app.models import (
+from app.core.time_utils import (
+    to_api_time,  # to_iso / utc_now 已在
+    to_iso,
+    utc_now,
+)
+from app.models import (  # 已有 ServiceSession 就合并
     AIAnalysis,
     Consumer,
     Message,
@@ -23,6 +25,7 @@ from app.models import (
     ServiceSession,
     ServiceTicket,
 )
+from app.schemas.api import SessionMessageCreateRequest
 from app.services import serializers
 
 # 未完成状态集合（计数与筛选口径）

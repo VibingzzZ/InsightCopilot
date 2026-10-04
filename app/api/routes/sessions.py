@@ -5,15 +5,13 @@
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
 from sqlalchemy.orm import Session as DbSession
 
 from app.core.deps import get_db
 from app.core.envelope import ok
-from app.services import session_service
-from fastapi import Header
-
 from app.schemas.api import SessionMessageCreateRequest
+from app.services import session_service
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
