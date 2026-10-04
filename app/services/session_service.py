@@ -190,6 +190,7 @@ def list_messages(
     messages = db.scalars(query.order_by(*ordering).offset((page - 1) * page_size).limit(page_size)).all()
     return [serializers.message_item(message) for message in messages], int(total)
 
+
 def append_message(
     db: DbSession,
     session_id: str,
@@ -209,10 +210,7 @@ def append_message(
 
     now_iso = to_iso(utc_now())
     next_seq = (
-        db.scalar(
-            select(func.coalesce(func.max(Message.seq_no), 0)).where(Message.session_id == session_id)
-        )
-        or 0
+        db.scalar(select(func.coalesce(func.max(Message.seq_no), 0)).where(Message.session_id == session_id)) or 0
     ) + 1
 
     message_id = f"m-{uuid.uuid4().hex[:12]}"
@@ -263,10 +261,6 @@ def append_message(
         "send": payload.send,
         "promise_extract_job_id": None,  # 承诺抽取链路暂未接入
     }
-
-
-
-
 
 
 # ---------- 以下为已下线能力（承诺只读视图 / Agent 分析快照），代码保留待恢复 ----------

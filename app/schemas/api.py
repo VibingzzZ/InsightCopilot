@@ -113,6 +113,7 @@ class TicketUpdateRequest(BaseModel):
     assignee: str | None = Field(None, max_length=64)
     note: str | None = Field(None, max_length=500)
 
+
 class SessionMessageCreateRequest(BaseModel):
     """模拟客服发送消息 / 保存草稿。"""
 

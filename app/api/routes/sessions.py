@@ -76,7 +76,5 @@ def create_session_message(
     x_operator_id: str | None = Header(None, alias="X-Operator-ID", description="操作人标识，写入审计事件"),
 ) -> dict:
     """模拟客服发送消息（send=true）或保存草稿（send=false）。"""
-    result = session_service.append_message(
-        db, session_id, payload=payload, operator_id=x_operator_id
-    )
+    result = session_service.append_message(db, session_id, payload=payload, operator_id=x_operator_id)
     return ok(request, result)
