@@ -1,71 +1,79 @@
-# 官方 Excel 数据导入与脱敏工具
-#
-# 用法（在项目根目录执行）：
-#   py scripts/import_excel.py --inspect                  # 查看工作表与列名（校准映射用）
-#   py scripts/import_excel.py                            # 导入默认路径数据文件
-#   py scripts/import_excel.py "data/你的文件.xlsx"        # 导入指定文件
-#
-# 导入默认保留基线数据（baseline-v1），重复运行按业务主键幂等 upsert。
+# 模拟数据导入与脱敏工具
 
-import argparse
+import hashlib
 import os
 import sys
-from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.database import SessionLocal  # noqa: E402
-from app.db.excel_import import import_workbook, inspect_workbook  # noqa: E402
+from app.core.database import SessionLocal
+from app.models.models import (
+    Consumer,
+    ServiceEvent,
+    ServiceSession,
+    utc_now,
+)
 
-DEFAULT_EXCEL_PATH = Path("data/赛题 1：数据共情者-业务数据.xlsx")
+
+def hash_nickname(nickname: str) -> str:
+    """对原始昵称求哈希，原始值不写库"""
+    return hashlib.sha256(nickname.encode("utf-8")).hexdigest()
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="导入官方 Excel 数据")
-    parser.add_argument(
-        "path",
-        nargs="?",
-        default=str(DEFAULT_EXCEL_PATH),
-        help=f"Excel 文件路径（默认 {DEFAULT_EXCEL_PATH}）",
-    )
-    parser.add_argument("--inspect", action="store_true", help="仅打印工作表与列名，不写库")
-    args = parser.parse_args()
+def mask_display_name(name: str) -> str:
+    """脱敏展示名称，如：魏h**"""
+    if not name:
+        return "用户**"
+    return name[0] + "**"
 
-    excel_path = Path(args.path)
-    if not excel_path.is_file():
-        print(f"未找到 Excel 文件: {excel_path}")
-        print("请将官方数据文件放入 data/ 目录，或通过参数指定路径；")
-        print("如需先体验 Demo，可执行: py scripts/demo_reset.py 生成基线数据。")
-        return 1
 
-    if args.inspect:
-        inspect_workbook(excel_path)
-        return 0
-
+def seed_baseline_data():
     db = SessionLocal()
     try:
-        stats = import_workbook(excel_path, db)
-        db.commit()
-        print("【导入完成】")
-        print(
-            "  会话 {sessions} / 消息 {messages} / 订单 {orders} / 工单 {tickets} / 消费者 {consumers} / 事件 {events}".format(
-                **stats.as_dict()
-            )
+        # 1. 创建测试消费者
+        c1 = Consumer(
+            consumer_id="C00015",
+            display_name_masked=mask_display_name("魏海波"),
+            nickname_hash=hash_nickname("魏海波_raw_nick"),
+            risk_level="L0",
         )
-        if stats.skipped_rows:
-            print(f"  跳过行数: {stats.skipped_rows}")
-        if stats.unlinked_rows:
-            print(f"  未关联行数: {stats.unlinked_rows}")
-        for warning in stats.warnings:
-            print(f"  [警告] {warning}")
-        return 0
-    except Exception as exc:  # noqa: BLE001 - 脚本层兜底，事务整笔回滚
+        db.merge(c1)
+
+        # 2. 创建测试会话 S00015
+        s1 = ServiceSession(
+            session_id="S00015",
+            consumer_id="C00015",
+            store_name="官方旗舰店",
+            scene_major="售后",
+            scene_minor="补发",
+            status="open",
+            last_message_at=utc_now().isoformat(),
+        )
+        db.merge(s1)
+
+        # merge 到 flush 之前不会真正落库，先落库再插事件，否则外键约束会失败
+        db.flush()
+
+        # 3. 创建时间线事件
+        evt = ServiceEvent(
+            consumer_id="C00015",
+            session_id="S00015",
+            event_type="message",
+            occurred_at=utc_now().isoformat(),
+            actor_type="buyer",
+            title="会话初始化",
+            content="消费者进入会话 S00015",
+        )
+        db.add(evt)
+
+        db.commit()
+        print("模拟初始化基线数据成功！")
+    except Exception as e:
         db.rollback()
-        print(f"导入失败，事务已整笔回滚: {exc}")
-        return 1
+        print(f"数据插入失败: {e}")
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    seed_baseline_data()

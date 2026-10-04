@@ -90,3 +90,10 @@ def _code_for_status(status_code: int) -> str:
     if status_code < 500:
         return ErrorCode.INVALID_PARAMETER
     return ErrorCode.INTERNAL_ERROR
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    # 直接 `python app/main.py` 即可启动；reload 在 Windows 下易起子进程，Demo 场景关闭。
+    uvicorn.run(app, host="127.0.0.1", port=8000)
