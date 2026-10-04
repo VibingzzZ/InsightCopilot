@@ -1,0 +1,22 @@
+.globalNav{width:76px;background:var(--blue);color:#dce7ff;display:flex;flex-direction:column;align-items:center;padding:17px 8px 14px;flex:none}
+.brand{width:42px;height:42px;border-radius:10px;background:#fff;color:var(--blue);display:grid;place-items:center;font-weight:800;font-size:19px;margin-bottom:20px}
+.globalNav nav{width:100%;display:flex;flex-direction:column;gap:5px}
+.globalNav nav a, .globalNav nav button{width:100%;height:58px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#dce7ff;position:relative; text-decoration: none;}
+.globalNav nav a span, .globalNav nav button span{font-size:11px}
+.globalNav nav a b, .globalNav nav button b{position:absolute;top:5px;right:8px;background:var(--coral);color:#fff;min-width:17px;height:17px;border-radius:9px;padding:0 4px;display:grid;place-items:center;font-size:9px}
+.globalNav nav a:hover,.globalNav nav a.active, .globalNav nav button:hover, .globalNav nav button.active{background:rgba(255,255,255,.16);color:#fff}
+.globalNav nav a.active:before, .globalNav nav button.active:before{content:"";position:absolute;left:-8px;width:3px;height:26px;border-radius:0 3px 3px 0;background:#fff}
+.navBottom{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:16px}
+.navBottom button{color:#dce7ff}
+.navAvatar{width:34px;height:34px;border-radius:50%;background:#fff;color:var(--blue);display:grid;place-items:center;font-weight:700;font-size:12px}
+
+@media(max-width:720px){
+  .globalNav{width:56px}
+  .globalNav nav a, .globalNav nav button{height:49px}
+  .globalNav nav a span, .globalNav nav button span{display:none}
+}
+@media(max-width:1200px){
+  .globalNav{width:64px;padding-left:6px;padding-right:6px}
+  .brand{width:38px;height:38px;font-size:17px;margin-bottom:14px}
+  .globalNav nav a, .globalNav nav button{height:52px}
+}

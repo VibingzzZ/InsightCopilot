@@ -1,0 +1,5 @@
+:root{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;color:#2f3541;background:#eef1f5;font-synthesis:none;--blue:#2869ed;--blue-2:#eaf1ff;--ink:#2f3541;--muted:#8d96a5;--line:#e6eaf0;--soft:#f5f7fa;--coral:#ef665d;--amber:#e7a13d;--green:#3da778;--panel:#fff;letter-spacing:0}
+*{box-sizing:border-box}
+body{margin:0;min-width:320px;min-height:100vh}
+button,input,textarea{font:inherit;letter-spacing:0}
+button{border:0;background:none;color:inherit;cursor:pointer}

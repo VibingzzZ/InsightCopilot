@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>知微客服副驾</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="left-rail">
+        <div class="brand-mark">Z</div>
+        <button class="rail-button active" data-view="copilot" title="客服副驾"><i data-lucide="messages-square"></i><span>接待</span></button>
+        <button class="rail-button" data-view="radar" title="履约雷达"><i data-lucide="radar"></i><span>雷达</span><b>6</b></button>
+        <button class="rail-button" title="服务工单"><i data-lucide="clipboard-list"></i><span>工单</span></button>
+        <button class="rail-button" title="评测中心"><i data-lucide="chart-no-axes-combined"></i><span>评测</span></button>
+        <div class="rail-spacer"></div>
+        <button class="rail-button" title="设置"><i data-lucide="settings-2"></i><span>设置</span></button>
+        <div class="user-avatar">A</div>
+      </aside>
+
+      <main class="main-canvas">
+        <header class="topbar">
+          <div class="topbar-title"><span class="eyebrow">BEAUTY SERVICE OS</span><h1>知微客服副驾</h1></div>
+          <div class="topbar-actions">
+            <div class="system-status"><span class="status-dot"></span>数据已同步 <small>刚刚</small></div>
+            <button class="icon-button" title="通知"><i data-lucide="bell"></i><span class="notification-dot"></span></button>
+            <button class="avatar-button" title="当前账号">林</button>
+          </div>
+        </header>
+
+        <section class="workspace" id="copilotView">
+          <aside class="inbox-pane">
+            <div class="inbox-head"><div><span class="section-kicker">TODAY / 09:41</span><h2>接待中 <span>12</span></h2></div><button class="icon-button subtle" title="筛选"><i data-lucide="sliders-horizontal"></i></button></div>
+            <div class="search-box"><i data-lucide="search"></i><input placeholder="搜索消费者、订单或场景" /></div>
+            <div class="queue-tabs"><button class="queue-tab active">全部 <b>12</b></button><button class="queue-tab">高风险 <b class="red-text">3</b></button><button class="queue-tab">待跟进 <b>5</b></button></div>
+            <div class="conversation-list" id="conversationList"></div>
+          </aside>
+
+          <section class="chat-pane">
+            <div class="chat-head"><div class="customer-heading"><div class="large-avatar" id="customerAvatar">魏</div><div><h2 id="customerName">魏h** <span class="online-dot"></span></h2><p id="customerMeta">3 次服务记录 · 最近进线 09:37</p></div></div><div class="chat-head-actions"><span class="tag muted" id="sceneTag">退款进度查询</span><button class="icon-button subtle" title="更多操作"><i data-lucide="more-horizontal"></i></button></div></div>
+            <div class="timeline-strip"><div><span>当前会话</span><strong id="sessionId">S00005</strong></div><div><span>关联订单</span><strong id="orderId">6920223542160114724</strong></div><div><span>关联工单</span><strong id="ticketId">—</strong></div><div><span>情绪趋势</span><strong class="trend-up" id="emotionTrend">焦虑 ↑</strong></div></div>
+            <div class="message-stream" id="messageStream"></div>
+            <div class="composer"><div class="composer-tools"><button class="icon-button subtle" title="添加附件"><i data-lucide="paperclip"></i></button><button class="icon-button subtle" title="插入快捷语"><i data-lucide="sparkles"></i></button><span class="composer-hint">AI 建议可编辑，发送前请确认事实</span></div><textarea id="composerInput" placeholder="输入回复，或点击右侧“采纳草稿”"></textarea><div class="composer-foot"><span class="secure-note"><i data-lucide="shield-check"></i> 敏感信息已脱敏</span><button class="send-button" id="sendButton">发送 <i data-lucide="send"></i></button></div></div>
+          </section>
+
+          <aside class="copilot-pane">
+            <div class="copilot-head"><div><span class="section-kicker">AI COPILOT</span><h2>服务副驾</h2></div><span class="live-pill"><span></span>实时</span></div>
+            <div class="risk-banner" id="riskBanner"><div class="risk-icon"><i data-lucide="triangle-alert"></i></div><div><strong id="riskTitle">关注：历史承诺未完成</strong><p id="riskCopy">消费者再次进线，建议优先确认退款处理进度</p></div></div>
+            <div class="copilot-tabs"><button class="copilot-tab active" data-tab="insight">洞察</button><button class="copilot-tab" data-tab="timeline">全轨迹</button><button class="copilot-tab" data-tab="action">动作</button></div>
+            <div class="copilot-content" id="copilotContent"></div>
+          </aside>
+        </section>
+
+        <section class="radar-view hidden" id="radarView">
+          <div class="radar-heading"><div><span class="section-kicker">SERVICE PROMISE RADAR</span><h2>履约雷达</h2><p>把聊天里的承诺变成可验证的任务</p></div><div class="radar-heading-actions"><button class="outline-button" id="simulateButton"><i data-lucide="play"></i>模拟扫描</button><button class="primary-button"><i data-lucide="plus"></i>新建跟踪</button></div></div>
+          <div class="metric-row"><div class="metric-card"><span>活跃承诺</span><strong>18</strong><small>较昨日 <em>+4</em></small></div><div class="metric-card warning"><span>24 小时内到期</span><strong>6</strong><small>需要及时跟进</small></div><div class="metric-card danger"><span>已超时</span><strong>3</strong><small>较昨日 <em>+1</em></small></div><div class="metric-card success"><span>本周履约率</span><strong>94.2%</strong><small>较上周 <em>+2.8%</em></small></div></div>
+          <div class="radar-layout"><div class="promise-table-card"><div class="table-head"><div><h3>承诺队列</h3><p>按风险和截止时间排序</p></div><div class="table-filters"><button class="filter-button active">全部 18</button><button class="filter-button">即将到期 6</button><button class="filter-button">已超时 3</button></div></div><div class="promise-table" id="promiseTable"></div></div><div class="radar-side-card"><div class="side-card-head"><div><h3>履约趋势</h3><p>近 7 日</p></div><i data-lucide="trending-up"></i></div><div class="chart"><div class="chart-y"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0</span></div><div class="chart-area"><div class="chart-grid"></div><svg viewBox="0 0 340 150" preserveAspectRatio="none"><polyline points="0,75 55,63 110,82 165,47 220,56 275,30 340,38" fill="none" stroke="#ec6b52" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="0,75 55,63 110,82 165,47 220,56 275,30 340,38" fill="none" stroke="#ec6b52" stroke-width="10" opacity=".08" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="chart-labels"><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>今天</span></div></div></div><div class="insight-callout"><i data-lucide="lightbulb"></i><span>退款类承诺占全部超时的 <strong>67%</strong>，建议增加财务节点提醒。</span></div></div></div>
+        </section>
+      </main>
+    </div>
+    <div class="toast" id="toast"><i data-lucide="check-circle-2"></i><span>已完成</span></div>
+    <script src="app.js"></script>
+  </body>
+</html>
