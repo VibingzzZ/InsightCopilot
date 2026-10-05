@@ -6,6 +6,7 @@ import { mockConversations } from '../../data/mockData';
 import { Avatar } from '../../components/Avatar';
 import { MessageBubble } from '../../components/MessageBubble';
 import { CopilotPane } from '../Copilot/CopilotPane';
+import { agentSocket } from '../../services/socket';
 import styles from './Workspace.module.css';
 
 export function Workspace() {
@@ -45,6 +46,11 @@ export function Workspace() {
     if (stream) stream.scrollTop = stream.scrollHeight;
   }, [selected.id, allMessages.length]);
 
+  useEffect(() => {
+    agentSocket.connect(selected.id);
+    return () => agentSocket.disconnect();
+  }, [selected.id]);
+
   const chooseConversation = (id: string) => { 
     setSelectedId(id); 
     setTab('insight'); 
@@ -57,6 +63,7 @@ export function Workspace() {
     const text = composer.trim(); 
     if (!text) return;
     addMessage(selected.id, { role: 'agent', text, time: '刚刚' });
+    agentSocket.sendMessage(text);
     setComposer(''); 
     notify(text.includes('明天') || text.includes('18:00') || text.includes('小时') ? '消息已发送，识别到 1 条服务承诺' : '消息已发送');
   };
