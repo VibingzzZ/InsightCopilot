@@ -10,6 +10,7 @@ import json
 import logging
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -96,7 +97,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         {
                             "type": "node_update",
                             "node": node_name,
-                            "data": node_state,
+                            "data": jsonable_encoder(node_state),
                         }
                     )
                     await asyncio.sleep(0.5)

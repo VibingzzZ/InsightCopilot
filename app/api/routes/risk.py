@@ -12,7 +12,7 @@ from app.core.deps import get_db
 from app.core.envelope import ok
 from app.services import risk_service
 
-router = APIRouter(prefix="/risk-queue", tags=["risk"])
+router = APIRouter(prefix="/api/risk-queue", tags=["risk"])
 
 
 @router.get("")
