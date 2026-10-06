@@ -5,11 +5,12 @@
 # - 请求日志带 request_id / operator_id，不记录请求体与敏感原文
 # - 模型超时/断网时业务接口仍返回 200 + degraded 结果；仅数据库不可读写才阻断
 
-import logging
-import json
 import asyncio
+import json
+import logging
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,9 +21,17 @@ from app.core import config
 from app.core.envelope import error_response, request_id_of
 from app.core.errors import ApiError, ErrorCode
 from app.core.middleware import RequestContextMiddleware
-from app.agent.graph import graph
 
 logger = logging.getLogger("app.main")
+
+# 关键修复：不要在启动时立刻导入 LangGraph
+# 这样 CI / import smoke test 在没有 API Key 时也不会直接崩掉。
+try:
+    from app.agent.graph import graph
+except Exception:
+    logger.warning("Agent graph unavailable at startup; it will be initialized lazily.", exc_info=True)
+    graph = None
+
 
 app = FastAPI(title=config.APP_NAME, version=config.APP_VERSION)
 
@@ -40,9 +49,21 @@ app.add_middleware(
 app.include_router(api_router, prefix=config.API_PREFIX)
 
 
+def _get_graph():
+    """懒加载 LangGraph，避免 import 时间崩掉。"""
+    global graph
+    if graph is None:
+        from app.agent.graph import graph as lazy_graph
+
+        graph = lazy_graph
+    return graph
+
+
 # WebSocket 路由（保留本地的 Chat Stream 逻辑）
 @app.websocket("/api/chat/stream/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    g = _get_graph()
+
     await websocket.accept()
     print(f"[WebSocket] Connected: {session_id}")
     try:
@@ -50,9 +71,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             data = await websocket.receive_text()
             payload = json.loads(data)
             text = payload.get("text", "")
-            
+
             print(f"[WebSocket] Received from {session_id}: {text}")
-            
+
             # 构造 LangGraph 初始状态，使用 mock mode 防止没有配置 API key 时崩溃
             initial_state = {
                 "session_id": session_id,
@@ -63,22 +84,24 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 "tickets": [],
                 "promises": [],
                 "events": [],
-                "mode": "mock" # 强制使用降级数据，以便能在没有后端凭证的电脑上跑通流程
+                "mode": "mock",  # 强制使用降级数据，以便能在没有后端凭证的电脑上跑通流程
             }
-            
+
             await websocket.send_json({"type": "start"})
-            
+
             # 迭代 LangGraph
-            async for event in graph.astream(initial_state, stream_mode="updates"):
+            async for event in g.astream(initial_state, stream_mode="updates"):
                 for node_name, node_state in event.items():
                     print(f"--- Node: {node_name} ---")
-                    await websocket.send_json({
-                        "type": "node_update",
-                        "node": node_name,
-                        "data": node_state
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "node_update",
+                            "node": node_name,
+                            "data": jsonable_encoder(node_state),
+                        }
+                    )
                     await asyncio.sleep(0.5)
-            
+
             await websocket.send_json({"type": "done"})
 
     except WebSocketDisconnect:
@@ -106,7 +129,12 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
 
 @app.exception_handler(StarletteHTTPException)
 async def handle_http_exception(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    return error_response(exc.status_code, request_id_of(request), _code_for_status(exc.status_code), str(exc.detail))
+    return error_response(
+        exc.status_code,
+        request_id_of(request),
+        _code_for_status(exc.status_code),
+        str(exc.detail),
+    )
 
 
 @app.exception_handler(Exception)
