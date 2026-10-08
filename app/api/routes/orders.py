@@ -9,7 +9,7 @@ from app.core.deps import get_db
 from app.core.envelope import ok
 from app.services import order_service
 
-router = APIRouter(prefix="/api/orders", tags=["orders"])
+router = APIRouter(prefix="/orders", tags=["orders"])
 
 
 @router.get("")

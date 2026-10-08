@@ -10,7 +10,7 @@ from app.core.envelope import ok
 from app.schemas.api import TicketUpdateRequest
 from app.services import ticket_service
 
-router = APIRouter(prefix="/api/tickets", tags=["tickets"])
+router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 
 @router.get("/{ticket_id}")

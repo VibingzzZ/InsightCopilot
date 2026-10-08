@@ -18,7 +18,7 @@ from app.core.time_utils import to_api_time, utc_now
 router = APIRouter(tags=["health"])
 
 
-@router.get("/api/health")
+@router.get("/health")
 def health(request: Request, db: Annotated[DbSession, Depends(get_db)]) -> dict:
     try:
         db.execute(text("SELECT 1"))
