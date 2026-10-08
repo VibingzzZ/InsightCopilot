@@ -33,3 +33,8 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Database
+*.db-shm
+*.db-wal
+# *.db (如果需要忽略所有 db 文件，可以取消注释此行)

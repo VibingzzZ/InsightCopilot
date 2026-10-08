@@ -36,13 +36,9 @@ class AgentSocket {
   private handleIncomingEvent(payload: any) {
     // 监听 LangGraph node updates
     if (payload.type === 'node_update' && payload.data) {
-      // 获取到草稿节点时，将其加入聊天流，表示 AI 已经完成了思考
+      // 获取到草稿节点时，将其更新为该会话的最新副驾草稿
       if (payload.node === 'reply' && payload.data.reply_draft) {
-        useChatStore.getState().addMessage(this.currentConversationId!, {
-          role: 'agent',
-          text: payload.data.reply_draft,
-          time: '刚刚'
-        });
+        useChatStore.getState().setDraft(this.currentConversationId!, payload.data.reply_draft);
       }
       // 未来可以在 useUIStore 增加状态提示如 "正在分析情感..." "正在事实校验..."
       console.log(`[LangGraph] Node updated:`, payload.node, payload.data);
