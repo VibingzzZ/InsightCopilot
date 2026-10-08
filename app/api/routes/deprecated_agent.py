@@ -21,7 +21,7 @@ from app.core.errors import session_not_found
 from app.core.events import event_bus
 from app.models import ServiceSession
 
-router = APIRouter(prefix="/sessions", tags=["deprecated-agent"])
+router = APIRouter(prefix="/api/sessions", tags=["deprecated-agent"])
 
 
 @router.get("/{session_id}/copilot")

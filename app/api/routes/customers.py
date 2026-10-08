@@ -9,7 +9,7 @@ from app.core.deps import get_db
 from app.core.envelope import ok
 from app.services import consumer_service, timeline_service
 
-router = APIRouter(prefix="/customers", tags=["customers"])
+router = APIRouter(prefix="/api/customers", tags=["customers"])
 
 
 @router.get("/{customer_id}")

@@ -13,7 +13,7 @@ from app.core.envelope import ok
 from app.schemas.api import SessionMessageCreateRequest
 from app.services import session_service
 
-router = APIRouter(prefix="/sessions", tags=["sessions"])
+router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 
 @router.get("")
