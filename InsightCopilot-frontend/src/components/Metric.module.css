@@ -1,0 +1,9 @@
+.metric{background:#fff;border:1px solid var(--line);border-radius:7px;padding:14px 15px}
+.metric>div{display:flex;align-items:center;justify-content:space-between}
+.metric>div span{font-size:9px;color:#8993a1}
+.metric>div svg{color:#8296bb}
+.metric>strong{font-size:26px;display:block;margin:7px 0 4px}
+.metric small{font-size:8px;color:#9aa2ad}
+.metric.warning>strong,.metric.warning svg{color:#b77c27}
+.metric.danger>strong,.metric.danger svg{color:var(--coral)}
+.metric.success>strong,.metric.success svg{color:var(--green)}
