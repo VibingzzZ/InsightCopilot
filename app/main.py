@@ -46,7 +46,9 @@ app.add_middleware(
     expose_headers=["X-Request-ID"],
 )
 
-app.include_router(api_router, prefix=config.API_PREFIX)
+# 路由自身已带 /api 前缀（如 /api/sessions、/api/health），这里不再叠加 prefix，
+# 否则会变成 /api/api/* 导致 404。
+app.include_router(api_router)
 
 
 def _get_graph():
