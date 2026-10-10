@@ -1,27 +1,49 @@
-import { ChevronRight, Sparkles, AlertTriangle, CheckCircle2, ShieldAlert, Clock3, ShieldCheck, Check, TicketCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronRight, Sparkles, AlertTriangle, CheckCircle2, ShieldAlert, Clock3, ShieldCheck, Check, TicketCheck, Loader2 } from 'lucide-react';
 import { Conversation, Action } from '../../types';
 import { useUIStore } from '../../store/useUIStore';
 import { useChatStore } from '../../store/useChatStore';
 import styles from './CopilotPane.module.css';
 
-function SectionTitle({ children, action }: { children: string; action?: string }) { 
+function SectionTitle({ children, action, onAction }: { children: string; action?: string; onAction?: () => void }) { 
   return (
     <div className={styles['section-title']}>
       <h3>{children}</h3>
-      {action && <button>{action}<ChevronRight size={12} /></button>}
+      {action && <button onClick={onAction}>{action}<ChevronRight size={12} /></button>}
     </div>
   ); 
 }
 
-function InsightPanel({ conversation: c, onAccept }: { conversation: Conversation; onAccept: () => void }) {
+function InsightPanel({ conversation: c, onAccept }: { conversation: Conversation; onAccept: (draft: string) => void }) {
+  const notify = useUIStore(state => state.notify);
+  const remoteDraft = useChatStore(state => state.drafts[c.id]);
+  const [draft, setDraft] = useState(remoteDraft || c.draft);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // 当切换会话或后端推送了新草稿时，重置本地草稿
+  useEffect(() => { setDraft(remoteDraft || c.draft); }, [c.id, c.draft, remoteDraft]);
+
+  const handleRegenerate = (mode: 'remake' | 'tone') => {
+    setIsGenerating(true);
+    notify(mode === 'remake' ? '已向大模型发送重新生成草稿请求...' : '正在使用 AI 为您润色和调整语气...');
+    
+    // 模拟等待后端大模型返回
+    setTimeout(() => {
+      setDraft(mode === 'remake' 
+        ? "非常抱歉给您带来如此困扰。我会立即为您建立专项工单并加急处理。在处理期间也请您务必遵医嘱妥善治疗，如果有任何新的情况随时联系我。"
+        : "亲爱的，真的非常抱歉让您有这样的体验呢~ 已经火速为您升级给不良反应专员处理啦，明天上午专员会亲自联系您，请您安心休养哦~");
+      setIsGenerating(false);
+    }, 1500);
+  };
+
   return (
     <>
       <section className={styles['copilot-section']}>
-        <SectionTitle action="判断依据">当前判断</SectionTitle>
+        <SectionTitle>当前判断</SectionTitle>
         <p className={styles['insight-copy']}>{c.insight}</p>
       </section>
       <section className={styles['copilot-section']}>
-        <SectionTitle action="查看证据">已核验事实</SectionTitle>
+        <SectionTitle>已核验事实</SectionTitle>
         <dl className={styles.facts}>
           {c.facts.map(f => (
             <div key={f.label}>
@@ -47,12 +69,12 @@ function InsightPanel({ conversation: c, onAccept }: { conversation: Conversatio
         </section>
       )}
       <section className={styles['copilot-section']}>
-        <SectionTitle action="重新生成">回复草稿</SectionTitle>
+        <SectionTitle action="重新生成" onAction={() => handleRegenerate('remake')}>回复草稿</SectionTitle>
         <div className={styles.draft}>
-          <p>{c.draft}</p>
+          <p>{isGenerating ? <span style={{display: 'flex', alignItems: 'center', gap: '6px', color: '#8993a1'}}><Loader2 size={12} style={{animation: 'spin 1s linear infinite'}}/> 正在思考中...</span> : draft}</p>
           <div>
-            <button onClick={onAccept}><Check size={14} />采纳草稿</button>
-            <button><Sparkles size={14} />调整语气</button>
+            <button disabled={isGenerating} onClick={() => onAccept(draft)}><Check size={14} />采纳草稿</button>
+            <button disabled={isGenerating} onClick={() => handleRegenerate('tone')}><Sparkles size={14} />调整语气</button>
           </div>
         </div>
       </section>
@@ -61,9 +83,10 @@ function InsightPanel({ conversation: c, onAccept }: { conversation: Conversatio
 }
 
 function TimelinePanel({ conversation: c }: { conversation: Conversation }) { 
+  const notify = useUIStore(state => state.notify);
   return (
     <section className={styles['copilot-section']}>
-      <SectionTitle action="展开全部">消费者服务时间线</SectionTitle>
+      <SectionTitle>消费者服务时间线</SectionTitle>
       <div className={styles.timeline}>
         {c.history.map((h, i) => (
           <div key={`${h.date}-${i}`} className={styles[h.tone]}>
@@ -83,9 +106,10 @@ function TimelinePanel({ conversation: c }: { conversation: Conversation }) {
 const actionIcon = { ticket: TicketCheck, clock: Clock3, shield: ShieldAlert };
 
 function ActionsPanel({ actions, onExecute, ticketCreated, completedActions, conversationId }: { actions: Action[]; onExecute: (a: Action) => void; ticketCreated: boolean; completedActions: Record<string, string>; conversationId: string }) { 
+  const notify = useUIStore(state => state.notify);
   return (
     <section className={styles['copilot-section']}>
-      <SectionTitle action="权限说明">建议动作</SectionTitle>
+      <SectionTitle>建议动作</SectionTitle>
       <div className={styles['action-list']}>
         {actions.map(a => { 
           const Icon = actionIcon[a.icon]; 
@@ -111,7 +135,7 @@ function ActionsPanel({ actions, onExecute, ticketCreated, completedActions, con
   ); 
 }
 
-export function CopilotPane({ conversation, onAcceptDraft }: { conversation: Conversation; onAcceptDraft: () => void }) {
+export function CopilotPane({ conversation, onAcceptDraft }: { conversation: Conversation; onAcceptDraft: (draft: string) => void }) {
   const tab = useUIStore(state => state.tab);
   const setTab = useUIStore(state => state.setTab);
   

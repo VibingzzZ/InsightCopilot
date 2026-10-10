@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { Workspace } from './features/Workspace/Workspace';
 import { RadarView } from './features/Radar/RadarView';
 import { Overlay } from './components/Overlay';
+import { BuyerSimulator } from './components/BuyerSimulator';
 import { useUIStore } from './store/useUIStore';
 import { useChatStore } from './store/useChatStore';
 import { mockConversations } from './data/mockData';
@@ -52,6 +53,9 @@ function App() {
             }} 
           />
         )}
+        
+        {/* 开发与测试专用的消费者模拟器 */}
+        <BuyerSimulator />
       </div>
     </div>
   );

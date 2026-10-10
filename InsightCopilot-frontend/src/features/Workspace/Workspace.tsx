@@ -63,7 +63,6 @@ export function Workspace() {
     const text = composer.trim(); 
     if (!text) return;
     addMessage(selected.id, { role: 'agent', text, time: '刚刚' });
-    agentSocket.sendMessage(text);
     setComposer(''); 
     notify(text.includes('明天') || text.includes('18:00') || text.includes('小时') ? '消息已发送，识别到 1 条服务承诺' : '消息已发送');
   };
@@ -183,7 +182,7 @@ export function Workspace() {
       </section>
 
       {/* Copilot Pane */}
-      <CopilotPane conversation={selected} onAcceptDraft={() => { setComposer(selected.draft); notify('草稿已放入输入框'); }} />
+      <CopilotPane conversation={selected} onAcceptDraft={(draft) => { setComposer(draft); notify('草稿已放入输入框'); }} />
     </div>
   );
 }
