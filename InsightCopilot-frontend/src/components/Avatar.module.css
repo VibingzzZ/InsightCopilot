@@ -1,0 +1,3 @@
+.avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#e5ebf5;color:#56657c;font-weight:700;font-size:11px;flex:none}
+.attention{background:#fff0dc;color:#a46d22}
+.urgent{background:#ffe5e1;color:#c8534b}
