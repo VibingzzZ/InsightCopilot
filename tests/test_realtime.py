@@ -38,8 +38,11 @@ def test_buyer_message_api_returns_result(client):
     assert "insight" in body["result"]
 
 
-def test_ws_rewrite_valid_command(client):
-    with client.websocket_connect("/ws/S-UNIT") as ws:
+def test_ws_rewrite_valid_command(client, monkeypatch):
+    # 强制走 mock 改写：断言文案确定；真模型输出文案不固定，不适合做单测断言
+    from app.integrations.model.gateway import gateway
+    monkeypatch.setattr(gateway, "is_available", lambda *a, **k: False)
+    with client.websocket_connect("/api/chat/stream/S-UNIT") as ws:
         ws.send_json(
             {"command": "adjust_tone", "params": {"tone": "polite"}, "draft": "退款会尽快处理"}
         )
@@ -51,14 +54,14 @@ def test_ws_rewrite_valid_command(client):
 
 
 def test_ws_invalid_command_is_tolerated(client):
-    with client.websocket_connect("/ws/S-UNIT") as ws:
-        # 缺 command 字段
-        ws.send_json({"foo": 1})
+    with client.websocket_connect("/api/chat/stream/S-UNIT") as ws:
+        # 非 JSON 文本 -> BAD_JSON 容错（不中断连接）
+        ws.send_text("not-a-json")
         err = ws.receive_json()
         assert err["type"] == "error"
-        assert err["code"] == "MISSING_COMMAND"
+        assert err["code"] == "BAD_JSON"
 
-        # 未知指令
+        # 未知指令（有 command 字段但非法）
         ws.send_json({"command": "not_supported", "draft": "x"})
         err2 = ws.receive_json()
         assert err2["type"] == "error"
@@ -72,7 +75,7 @@ def test_ws_invalid_command_is_tolerated(client):
 
 
 def test_ws_broadcast_from_test_api(client):
-    with client.websocket_connect("/ws/S-BROADCAST") as ws:
+    with client.websocket_connect("/api/chat/stream/S-BROADCAST") as ws:
         r = client.post(
             "/api/test/buyer_message",
             json={"session_id": "S-BROADCAST", "message": "我的快递三天没动了"},
@@ -85,8 +88,11 @@ def test_ws_broadcast_from_test_api(client):
         assert "result" in frame
 
 
-def test_optimize_expression_command(client):
-    with client.websocket_connect("/ws/S-UNIT") as ws:
+def test_optimize_expression_command(client, monkeypatch):
+    # 强制走 mock 改写：断言文案确定（同上）
+    from app.integrations.model.gateway import gateway
+    monkeypatch.setattr(gateway, "is_available", lambda *a, **k: False)
+    with client.websocket_connect("/api/chat/stream/S-UNIT") as ws:
         ws.send_json({"command": "optimize_expression", "draft": "关于您的订单我们这边已经在处理了请您耐心等待"})
         msg = ws.receive_json()
         assert msg["type"] == "rewrite"

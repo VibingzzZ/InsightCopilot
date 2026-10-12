@@ -10,6 +10,7 @@ interface UIState {
   selectedAttachment: string;
   productExpanded: boolean;
   scanDone: boolean;
+  analyzing: boolean;
 
   setQueueFilter: (filter: 'all' | 'risk' | 'pending') => void;
   setQuery: (query: string) => void;
@@ -19,6 +20,7 @@ interface UIState {
   setSelectedAttachment: (attachment: string) => void;
   setProductExpanded: (expanded: boolean | ((prev: boolean) => boolean)) => void;
   setScanDone: (done: boolean) => void;
+  setAnalyzing: (analyzing: boolean) => void;
   notify: (msg: string) => void;
 }
 
@@ -32,6 +34,7 @@ export const useUIStore = create<UIState>((set) => ({
   selectedAttachment: '',
   productExpanded: false,
   scanDone: false,
+  analyzing: false,
 
   setQueueFilter: (f) => set({ queueFilter: f }),
   setQuery: (q) => set({ query: q }),
@@ -41,6 +44,7 @@ export const useUIStore = create<UIState>((set) => ({
   setSelectedAttachment: (a) => set({ selectedAttachment: a }),
   setProductExpanded: (e) => set((state) => ({ productExpanded: typeof e === 'function' ? e(state.productExpanded) : e })),
   setScanDone: (d) => set({ scanDone: d }),
+  setAnalyzing: (a) => set({ analyzing: a }),
   notify: (msg) => {
     set({ toast: msg });
     setTimeout(() => set({ toast: '' }), 2200);

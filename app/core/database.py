@@ -1,11 +1,17 @@
 # 数据库连接配置
 
+from pathlib import Path
+
 import sqlite3
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "sqlite:///./data/sqlite_demo.db"
+# 用项目根目录锚定数据库路径，避免“相对路径 + 启动 CWD 不对”导致打不开文件
+# (database.py 位于 app/core/，parents[2] 即项目根)。
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = PROJECT_ROOT / "data" / "sqlite_demo.db"
+DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
 
 engine = create_engine(
     DATABASE_URL,

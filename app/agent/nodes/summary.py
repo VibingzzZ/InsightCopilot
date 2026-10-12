@@ -13,13 +13,29 @@ from app.prompt.summary import TRAJECTORY_SUMMARY_PROMPT
 
 
 def summary_node(state: CustomerState) -> dict:
+    events = state.get("events") or []
+    tickets = state.get("tickets") or []
+    promises = state.get("promises") or []
+
+    # 降本：无历史（事件/工单/承诺均为空）时，轨迹摘要没有可压缩的信息，
+    # 直接走确定性 mock，省掉一次模型调用。
+    if not (events or tickets or promises):
+        summary = mock_summary(
+            events,
+            state.get("messages") or [],
+            state.get("orders") or [],
+            tickets,
+            promises,
+        )
+        return {"timeline_summary": summary.summary}
+
     prompt = TRAJECTORY_SUMMARY_PROMPT.format(
         message=state.get("current_message", ""),
         risk_level=state.get("risk_level", "L0"),
-        events=state.get("events") or [],
+        events=events,
         orders=state.get("orders") or [],
-        tickets=state.get("tickets") or [],
-        promises=state.get("promises") or [],
+        tickets=tickets,
+        promises=promises,
         format_instructions=format_instructions(TrajectorySummary),
     )
 

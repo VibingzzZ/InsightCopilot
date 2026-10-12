@@ -43,4 +43,11 @@ def reply_node(state: CustomerState) -> dict:
         fallback=lambda: mock_reply(risk_level, _evidence_lines(state)),
     )
 
-    return {"reply_draft": result.reply, "degraded": degraded}
+    # 防御：模型偶尔会返回合法 JSON 但 reply 为空串（前端以 reply_draft 是否为空
+    # 决定是否回写草稿）。此时回退到 mock 话术，保证下发的 reply_draft 永远非空。
+    reply_text = (result.reply or "").strip()
+    if not reply_text:
+        reply_text = mock_reply(risk_level, _evidence_lines(state)).reply
+        degraded = True
+
+    return {"reply_draft": reply_text, "degraded": degraded}
