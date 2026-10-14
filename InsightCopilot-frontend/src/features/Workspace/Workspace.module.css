@@ -67,6 +67,13 @@
 .composer-bar button:hover{background:#f2f4f7;border-radius:5px}
 .composer-bar span{margin-left:auto;display:flex;align-items:center;gap:4px;color:#8d98a6;font-size:8px}
 .composer-bar span svg{color:var(--green)}
+.composer-bar .uploading{margin-left:8px;color:var(--blue);font-size:8px}
+.pending-attachment{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:6px 8px;background:#f6f8fb;border:1px solid #e6eaf0;border-radius:5px}
+.pending-attachment img{max-width:54px;max-height:54px;border-radius:4px;display:block;border:1px solid #e6eaf0}
+.pending-attachment .pending-file{display:flex;align-items:center;gap:6px;font-size:9px;color:#5d6776;min-width:0}
+.pending-attachment .pending-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.pending-attachment button{margin-left:auto;width:24px;height:24px;display:grid;place-items:center;border-radius:5px;color:#727e8e}
+.pending-attachment button:hover{background:#eef1f5}
 .composer textarea{height:49px;width:100%;border:0;resize:none;outline:0;padding:6px 5px;font-size:11px;color:var(--ink);line-height:1.55}
 .composer textarea::placeholder{color:#aeb5be}
 .composer-footer{display:flex;align-items:center;justify-content:space-between}

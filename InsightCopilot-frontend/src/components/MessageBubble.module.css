@@ -13,5 +13,9 @@
 .attachment section{display:flex;flex-direction:column;gap:2px}
 .attachment section strong{font-size:9px}
 .attachment section small{font-size:8px;color:#929aa5}
-.attachment button{margin-left:auto}
+.attachment button,.attachment a{margin-left:auto;width:26px;height:26px;display:grid;place-items:center;color:#727e8e;border-radius:5px}
+.attachment a{text-decoration:none}
+.attachment button:hover,.attachment a:hover{background:#f2f4f7}
+.image-block{margin-top:8px;max-width:220px}
+.image-block img{width:100%;border-radius:5px;display:block;cursor:pointer;border:1px solid #e6eaf0}
 .system-message{display:flex;align-items:center;justify-content:center;color:#a6adb7;font-size:9px;margin-bottom:14px}

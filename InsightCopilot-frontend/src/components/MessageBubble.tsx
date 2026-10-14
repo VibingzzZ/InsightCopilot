@@ -1,7 +1,13 @@
-import { FileImage, ChevronRight } from 'lucide-react';
+import { FileImage, ChevronRight, Download } from 'lucide-react';
 import { Message } from '../types';
 import { Avatar } from './Avatar';
 import styles from './MessageBubble.module.css';
+
+function fileExt(name?: string): string {
+  if (!name) return 'FILE';
+  const i = name.lastIndexOf('.');
+  return i >= 0 ? name.slice(i + 1).toUpperCase().slice(0, 5) : 'FILE';
+}
 
 export function MessageBubble({ message: m, customer, onOpenAttachment }: { message: Message; customer: string; onOpenAttachment: (name: string) => void }) {
   if (m.role === 'system') return <div className={styles['system-message']}>{m.text}</div>;
@@ -16,11 +22,34 @@ export function MessageBubble({ message: m, customer, onOpenAttachment }: { mess
         </div>
         <div className={styles.bubble}>
           {m.text}
-          {m.attachment && (
+          {m.attachmentUrl && m.attachmentKind === 'image' && (
+            <div className={styles['image-block']}>
+              <img src={m.attachmentUrl} alt={m.attachment || '图片'} onClick={() => onOpenAttachment(m.attachmentUrl!)} />
+            </div>
+          )}
+          {m.attachmentUrl && m.attachmentKind === 'attachment' && (
             <div className={styles.attachment}>
               <div>
                 <FileImage size={19} />
-                <span>JPG</span>
+                <span>{fileExt(m.attachment)}</span>
+              </div>
+              <section>
+                <strong>{m.attachment}</strong>
+                <small>点击查看或下载</small>
+              </section>
+              <a href={m.attachmentUrl} download title="下载" onClick={(e) => e.stopPropagation()}>
+                <Download size={15} />
+              </a>
+              <button title="查看资料" onClick={() => onOpenAttachment(m.attachmentUrl!)}>
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
+          {!m.attachmentUrl && m.attachment && (
+            <div className={styles.attachment}>
+              <div>
+                <FileImage size={19} />
+                <span>{fileExt(m.attachment)}</span>
               </div>
               <section>
                 <strong>{m.attachment}</strong>

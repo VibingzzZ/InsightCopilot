@@ -122,3 +122,7 @@ class SessionMessageCreateRequest(BaseModel):
     send: bool = True  # 是否立即发送（否则仅保存草稿）
     client_message_id: str | None = Field(default=None, max_length=64)
     sender_label: str | None = Field(default=None, max_length=50)
+    # 附件：由 /api/uploads 返回的文件路径（path）或 URL（url）。
+    # kind=image 时会将消息标记为图片类型并写入 image_path，供视觉识别链路消费。
+    attachment: str | None = Field(default=None, max_length=1024)
+    attachment_kind: Literal["image", "attachment"] | None = Field(default=None)

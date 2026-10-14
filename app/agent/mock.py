@@ -14,6 +14,7 @@ from app.agent.schemas.analysis import (
     IntentAnalysis,
     PromiseExtraction,
     ReplyDraft,
+    RewriteResult,
     RiskExtraction,
     TrajectorySummary,
     VisionExtraction,
@@ -240,3 +241,12 @@ def mock_summary(
             lines.append("暂无跨会话历史轨迹")
 
     return TrajectorySummary(summary="；".join(lines), relevant_event_ids=ids)
+
+
+def mock_rewrite(command: str, draft: str, params: dict | None = None) -> RewriteResult:
+    """草稿改写 Mock：确定性前缀标注，不调用模型，结果可复现（Task 02/03）。"""
+    params = params or {}
+    if command == "adjust_tone":
+        tone = params.get("tone", "polite")
+        return RewriteResult(rewritten=f"（{tone} 语气润色）{draft}")
+    return RewriteResult(rewritten=f"（表达已优化）{draft}")

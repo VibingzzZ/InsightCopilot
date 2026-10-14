@@ -16,7 +16,8 @@
 - [8. Agent 流程](#8-agent-流程)
 - [9. 数据库](#9-数据库)
 - [10. API 接口](#10-api-接口)
-- [11. 待办 / 路线图](#11-待办--路线图)
+- [11. 成本可观测](#11-成本可观测)
+- [12. 待办 / 路线图](#12-待办--路线图)
 
 ## 1. 项目概述
 
@@ -47,7 +48,9 @@
 ```text
 InsightCopilot/
 ├── app/
-│   ├── main.py                  # FastAPI 入口（/health + __main__ 启动）
+│   ├── main.py                  # FastAPI 入口（/health + WS /api/chat/stream + __main__ 启动）
+│   ├── api/                     # 路由聚合（api_router 统一挂 /api 前缀）
+│   │   └── routes/              # cost / health / sessions / customers / orders / tickets / uploads
 │   ├── agent/                   # Agent 层
 │   │   ├── graph.py             # LangGraph 状态图（节点编排 + 条件边）
 │   │   ├── state.py             # CustomerState 共享状态
@@ -280,32 +283,76 @@ SQLite，连接串 `sqlite:///./data/sqlite_demo.db`（见 `app/core/database.py
 
 ## 10. API 接口
 
-当前实现：
+> 全部接口统一返回 `{data, meta, error}` 信封；Base URL 为 `/api`（WebSocket 与测试接口除外）。
 
-| 方法 | 路径 | 状态 |
-| --- | --- | --- |
-| GET | `/health` | ✅ 已实现 |
-
-规划中（对照 `docs/知微客服副驾_FastAPI接口设计文档`，尚未接线）：
+### 已实现（已挂载）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
+| GET | `/health` | 健康检查 |
+| GET | `/api/health` | 健康检查（带 DB 探活） |
 | GET | `/api/sessions` | 会话列表 |
 | GET | `/api/sessions/{id}` | 会话详情 |
-| GET | `/api/sessions/{id}/copilot` | **副驾核心接口**（调 `run_copilot`） |
-| POST | `/api/sessions/{id}/messages` | 发送/草稿消息 |
-| GET | `/api/sessions/{id}/stream` | 流式输出 |
+| GET | `/api/sessions/{id}/messages` | 会话消息列表 |
+| POST | `/api/sessions/{id}/messages` | 发送 / 草稿消息（支持图片附件 `attachment`） |
+| GET | `/api/customers/{id}` | 客户详情（脱敏展示名） |
 | GET | `/api/customers/{id}/timeline` | 客户时间线 |
-| GET | `/api/orders/{id}` / `/api/tickets/{id}` | 订单/工单详情 |
-| GET | `/api/risk-queue` | 风险队列 |
-| POST | `/api/actions/preview` / `/api/actions/confirm` | 动作预览/确认 |
-| GET/POST/PATCH | `/api/promises...` | 承诺抽取/扫描/更新 |
-| POST | `/api/demo/reset` | 演示重置 |
+| GET | `/api/orders` | 订单列表 |
+| GET | `/api/orders/{id}` | 订单详情 |
+| GET | `/api/tickets/{id}` | 工单详情 |
+| PATCH | `/api/tickets/{id}` | 更新工单 |
+| POST | `/api/uploads` | 上传照片 / 附件（multipart `file` + `kind=image\|attachment`），校验扩展名白名单 + 体积上限，返回 `/media/...` 可访问 URL |
+| GET | `/api/cost/summary` | 全局成本汇总（token / 金额 / 按路由拆分） |
+| GET | `/api/cost/{session_id}` | 单会话成本明细 |
+| GET | `/api/cost/consumer/{consumer_id}` | 单用户成本累计（该用户所有会话合并） |
 
-## 11. 待办 / 路线图
+### 实时 / 测试接口（定义在 `app/main.py`，不走 `/api` 前缀）
 
-- [ ] 接线副驾 HTTP 接口（`/api/sessions/{id}/copilot` 等）
-- [ ] 前端（React + TypeScript + Vite，任务 P-02）
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| WS | `/api/chat/stream/{session_id}` | 买家消息 → LangGraph 流式分析；会话结束回传 `cost_summary` 帧 |
+| POST | `/api/test/buyer_message` | 模拟买家消息，跑一次副驾分析并广播（仅本地联调，不落库） |
+
+### 静态资源
+
+| 路径 | 说明 |
+| --- | --- |
+| `/media/<file>` | 上传文件静态访问（对应 `/api/uploads` 落盘的 `data/media/`） |
+
+### 规划中 / 暂未挂载
+
+- 风险队列 `/api/risk-queue`（代码在 `app/api/routes/risk.py`，未挂载）
+- 副驾 HTTP 接口 `/api/sessions/{id}/copilot` 与 SSE 流（在 `deprecated_agent.py`，未挂载，等待重构）
+- 动作预览 / 确认、承诺抽取扫描、演示重置等（见 `docs/` 接口设计文档）
+
+## 11. 成本可观测
+
+比赛把「模型性能与成本优化能力」列为加分项，本质是看 **是否有 token 节约机制 + 能否体现消耗**。本项目用**日志替代复杂可视化**，且按用户决策**不新增成本导航页**。
+
+### 怎么看到 AI 成本
+
+- 前端：每条 WebSocket 会话结束时，后端在 `finally` 回传 `cost_summary` 帧，前端弹窗提示
+  `本次 AI 消耗 ¥x（n 次调用 / 共 m tokens，降级 p%）`。
+- 后端接口（进程内累计，演示期间单进程常驻即可）：
+  - `GET /api/cost/summary` —— 全局汇总 + 按路由（triage / reply / …）拆分，便于对比合并前后的降本收益。
+  - `GET /api/cost/{session_id}` —— 单会话明细（每次模型调用的 route / model / token / 成本）。
+  - `GET /api/cost/consumer/{consumer_id}` —— 单用户累计（该消费者名下所有会话的成本合并）。
+
+### 降本机制（可量化）
+
+- **意图 / 情绪 / 风险合并**：`triage` 节点把三件事合并成 1 次模型调用（fast 路由）。
+- **空历史跳过模型**：`summary` 节点在无历史轨迹时跳过模型调用，直接走 Mock（省 1 次 reasoning 路由调用）。
+- 因此默认对话流通常只有 **2 次真实调用**（triage + reply），其余走规则 / Mock。
+
+### 成本计算与限制
+
+- 单价见 `app/agent/cost.py` 的 `MODEL_PRICING`（按模型 input / output 每百万 token 单价）；金额用浮点 `compute_cost_yuan`（保留 6 位小数），Mock / 降级调用不计费（`cost_yuan = 0`）。
+- 成本日志为**进程内内存**（不落库），单进程常驻才累计；服务重启会清零。演示场景足够；若要持久化可改为落 `ai_analysis` 表或外部时序库。
+
+## 12. 待办 / 路线图
+
+- [ ] 接线副驾 HTTP 接口（`/api/sessions/{id}/copilot` 等，`deprecated_agent.py` 重构后挂载）
+- [x] 前端（React + TypeScript + Vite，目录 `InsightCopilot-frontend/`，已接入 WS 与上传）
 - [ ] 真实 Excel 数据导入
 - [ ] README 一键启动脚本（任务 P-01）
 - [ ] 现场离线部署 + 断网降级演示验收

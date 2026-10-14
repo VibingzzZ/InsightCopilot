@@ -15,6 +15,10 @@
 .attachment-preview svg{color:var(--coral)}
 .attachment-preview strong,.module-placeholder strong{font-size:12px;color:var(--ink)}
 .attachment-preview span,.module-placeholder span{font-size:10px}
+.attachment-preview a{font-size:10px;color:var(--blue);text-decoration:none;border:1px solid #cfe0fb;padding:6px 11px;border-radius:5px;background:#fff}
+.attachment-preview a:hover{background:#f0f6ff}
+.attachment-image-wrap{display:flex;justify-content:center;padding:6px 0}
+.attachment-image-wrap img{max-width:100%;max-height:360px;border-radius:6px;border:1px solid #e6eaf0;display:block}
 .module-placeholder svg{color:var(--green)}
 .tracking-form{padding:17px;display:flex;flex-direction:column;gap:13px}
 .tracking-form label{display:flex;flex-direction:column;gap:6px;font-size:10px;color:#7f8997}

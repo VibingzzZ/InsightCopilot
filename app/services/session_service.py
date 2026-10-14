@@ -214,6 +214,9 @@ def append_message(
     ) + 1
 
     message_id = f"m-{uuid.uuid4().hex[:12]}"
+    # 附件：图片类标记为 image 类型并写入 image_path，供视觉识别链路消费；其余仅挂接路径。
+    image_path = payload.attachment
+    content_type = "image" if (payload.attachment and payload.attachment_kind == "image") else "text"
     message = Message(
         message_id=message_id,
         session_id=session_id,
@@ -221,8 +224,9 @@ def append_message(
         sent_at=now_iso,
         role=payload.role,
         sender_label=payload.sender_label or ("客服" if payload.role == "agent" else None),
-        content_type="text",
+        content_type=content_type,
         message_text=payload.content,
+        image_path=image_path,
         is_target_buyer_message=False,
     )
     db.add(message)

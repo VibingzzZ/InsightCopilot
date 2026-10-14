@@ -7,6 +7,8 @@ import { Avatar } from '../../components/Avatar';
 import { MessageBubble } from '../../components/MessageBubble';
 import { CopilotPane } from '../Copilot/CopilotPane';
 import { agentSocket } from '../../services/socket';
+import { uploadFile } from '../../services/upload';
+import type { AttachmentKind } from '../../types';
 import styles from './Workspace.module.css';
 
 export function Workspace() {
@@ -27,6 +29,10 @@ export function Workspace() {
   const addMessage = useChatStore(state => state.addMessage);
 
   const [composer, setComposer] = useState('');
+  const [pending, setPending] = useState<{ kind: AttachmentKind; url: string; name: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const pickKindRef = useRef<AttachmentKind>('image');
   const messageStreamRef = useRef<HTMLDivElement>(null);
 
   const selected = mockConversations.find(c => c.id === selectedId) ?? mockConversations[0];
@@ -61,10 +67,43 @@ export function Workspace() {
 
   const sendMessage = () => {
     const text = composer.trim(); 
-    if (!text) return;
-    addMessage(selected.id, { role: 'agent', text, time: '刚刚' });
+    if (!text && !pending) return;
+    addMessage(selected.id, {
+      role: 'agent',
+      text: text || '',
+      time: '刚刚',
+      ...(pending
+        ? { attachmentUrl: pending.url, attachmentKind: pending.kind, attachment: pending.name }
+        : {}),
+    });
     setComposer(''); 
+    setPending(null);
     notify(text.includes('明天') || text.includes('18:00') || text.includes('小时') ? '消息已发送，识别到 1 条服务承诺' : '消息已发送');
+  };
+
+  const openPicker = (kind: AttachmentKind) => {
+    pickKindRef.current = kind;
+    if (fileRef.current) {
+      fileRef.current.accept = kind === 'image' ? 'image/*' : '*/*';
+    }
+    fileRef.current?.click();
+  };
+
+  const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const kind = pickKindRef.current;
+    setUploading(true);
+    try {
+      const result = await uploadFile(file, kind);
+      setPending({ kind: result.kind, url: result.url, name: result.original_name });
+      notify('已上传，发送时随消息一起发出');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '上传失败');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const ticketCreated = useChatStore(state => state.ticketCreated);
@@ -168,16 +207,30 @@ export function Workspace() {
         
         <div className={styles.composer}>
           <div className={styles['composer-bar']}>
-            <button title="添加图片" onClick={() => notify('图片上传将在后端接入')}><Image size={18} /></button>
-            <button title="添加附件" onClick={() => notify('附件上传将在后端接入')}><Paperclip size={18} /></button>
+            <button title="添加图片" onClick={() => openPicker('image')} disabled={uploading}><Image size={18} /></button>
+            <button title="添加附件" onClick={() => openPicker('attachment')} disabled={uploading}><Paperclip size={18} /></button>
             <button title="AI 快捷指令" onClick={() => { setComposer(selected.draft); notify('已插入 AI 回复草稿'); }}><Sparkles size={18} /></button>
             <span><ShieldCheck size={13} />敏感信息已脱敏</span>
+            {uploading && <small className={styles['uploading']}>上传中…</small>}
           </div>
+
+          {pending && (
+            <div className={styles['pending-attachment']}>
+              {pending.kind === 'image' ? (
+                <img src={pending.url} alt={pending.name} />
+              ) : (
+                <div className={styles['pending-file']}><Paperclip size={15} /><span>{pending.name}</span></div>
+              )}
+              <button title="移除附件" onClick={() => setPending(null)}><X size={14} /></button>
+            </div>
+          )}
+
           <textarea maxLength={500} value={composer} onChange={e => setComposer(e.target.value)} placeholder="输入回复，或采纳右侧 AI 草稿" />
           <div className={styles['composer-footer']}>
             <small>{composer.length}/500</small>
-            <button className={styles['send-button']} onClick={sendMessage} disabled={!composer.trim()}>发送 <Send size={14} /></button>
+            <button className={styles['send-button']} onClick={sendMessage} disabled={!composer.trim() && !pending}>发送 <Send size={14} /></button>
           </div>
+          <input ref={fileRef} type="file" hidden onChange={onFilePicked} />
         </div>
       </section>
 
