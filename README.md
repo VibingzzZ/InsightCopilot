@@ -17,7 +17,8 @@
 - [9. 数据库](#9-数据库)
 - [10. API 接口](#10-api-接口)
 - [11. 成本可观测](#11-成本可观测)
-- [12. 待办 / 路线图](#12-待办--路线图)
+- [12. Agent 评测集](#12-agent-评测集)
+- [13. 待办 / 路线图](#13-待办--路线图)
 
 ## 1. 项目概述
 
@@ -349,7 +350,68 @@ SQLite，连接串 `sqlite:///./data/sqlite_demo.db`（见 `app/core/database.py
 - 单价见 `app/agent/cost.py` 的 `MODEL_PRICING`（按模型 input / output 每百万 token 单价）；金额用浮点 `compute_cost_yuan`（保留 6 位小数），Mock / 降级调用不计费（`cost_yuan = 0`）。
 - 成本日志为**进程内内存**（不落库），单进程常驻才累计；服务重启会清零。演示场景足够；若要持久化可改为落 `ai_analysis` 表或外部时序库。
 
-## 12. 待办 / 路线图
+## 12. Agent 评测集
+
+为量化 Agent 的「分类准确性 + 风险召回 + 回复质量 + 成本效率」，项目内置了一个轻量评测 Harness（纯 Python，不依赖前端，与第 11 节成本可观测同源）。
+
+### 文件
+
+| 文件 | 作用 |
+| --- | --- |
+| `eval/eval_cases.jsonl` | 评测用例集（JSONL，一行一条）。字段直接复用 `TriageAnalysis` 真实枚举（`intent_primary` / `emotion` / `risk` / `entities`）与回复 rubric（`must_contain` / `must_not` / `brand_compliance`） |
+| `eval/run_eval.py` | 评测运行器：直接 `graph.invoke(...)` 拿完整 final state（含 triage 原始 `risk` 全字段 + `reply_draft`），再用 `cost.session_totals` 取成本；四维度评分；LLM 裁判做成 `--judge` 可选开关 |
+| `eval/report.md` | 运行后自动生成的 Markdown 报告（逐用例表 + 维度均值） |
+
+用例格式示例：
+
+```json
+{
+  "id": "EVAL-001",
+  "category": "不良反应",
+  "difficulty": "hard",
+  "consumer_id": "C00005",
+  "input": "用了你们家精华全脸红肿起疹子,痒得睡不着,是不是过敏了?",
+  "expected": {
+    "intent_primary": "不良反应",
+    "emotion": "焦虑",
+    "risk": { "adverse_reaction": true, "severity": "obvious", "medical_visit": false, "regulatory_complaint": false },
+    "entities": ["精华"],
+    "reply_rubric": { "must_contain": ["停用", "安抚", "就医建议"], "must_not": ["诊断", "保证治愈"], "brand_compliance": true }
+  }
+}
+```
+
+多轮上下文 / 带订单场景可用 `setup.messages`、`setup.orders` 字段构造。
+
+### 四个评测维度
+
+| 维度 | 评分方式 | 对标字段 |
+| --- | --- | --- |
+| 意图 / 情绪分类 | `intent_primary` / `emotion` 精确匹配；`entities` 用集合 F1 | `intent_primary`, `emotion`, `entities` |
+| 风险召回（安全） | `adverse_reaction` / `medical_visit` / `regulatory_complaint` 必须不漏；`severity` 用序数精度（none < mild < obvious < severe） | `risk` 全字段 |
+| 回复质量 | 规则校验 `must_contain` / `must_not`；加 `--judge` 后由 deepseek-flash 按 1–5 评品牌合规 / 共情 / 准确 / 可操作 | `reply_draft.reply` |
+| 成本效率 | 直接读 `cost_summary`：平均 token、调用次数、降级占比 | 已落地的成本接口 |
+
+> 前两项为确定性打分（不依赖 LLM 裁判），可稳定复现；成本维度与第 11 节同源，正好证明降本可量化。
+
+### 运行
+
+```bash
+uv run python eval/run_eval.py                 # 全量跑，出 report.md
+uv run python eval/run_eval.py --limit 2        # 只跑前 2 条
+uv run python eval/run_eval.py --cases 不良反应  # 按 category 关键词过滤
+uv run python eval/run_eval.py --judge          # 开启 LLM 裁判（会消耗 token）
+```
+
+### 基线参考（6 条样例）
+
+- 风险召回 overall = **1.0**（未漏判任何不良反应 / 就医 / 监管威胁）
+- 意图 0.833、情绪 0.833、实体 F1 0.444（暴露实体抽取偏弱，可作为迭代目标）
+- 平均 **1980 tokens / 用例**，每用例仅 **2 次真实调用**（印证降本设计）
+
+迭代闭环：针对 low-score case 修改 prompt / 节点 → 重跑 → 看提升。
+
+## 13. 待办 / 路线图
 
 - [ ] 接线副驾 HTTP 接口（`/api/sessions/{id}/copilot` 等，`deprecated_agent.py` 重构后挂载）
 - [x] 前端（React + TypeScript + Vite，目录 `InsightCopilot-frontend/`，已接入 WS 与上传）
