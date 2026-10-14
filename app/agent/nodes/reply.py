@@ -41,6 +41,7 @@ def reply_node(state: CustomerState) -> dict:
         route="reasoning",
         mode=state.get("mode", "auto"),
         fallback=lambda: mock_reply(risk_level, _evidence_lines(state)),
+        session_id=state.get("session_id"),
     )
 
     # 防御：模型偶尔会返回合法 JSON 但 reply 为空串（前端以 reply_draft 是否为空

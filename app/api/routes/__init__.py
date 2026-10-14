@@ -8,7 +8,7 @@
 
 from fastapi import APIRouter
 
-from app.api.routes import cost, customers, health, orders, sessions, tickets
+from app.api.routes import cost, customers, health, orders, sessions, tickets, uploads
 
 api_router = APIRouter()
 api_router.include_router(health.router)
@@ -17,3 +17,4 @@ api_router.include_router(sessions.router)
 api_router.include_router(customers.router)
 api_router.include_router(orders.router)
 api_router.include_router(tickets.router)
+api_router.include_router(uploads.router)

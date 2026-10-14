@@ -1,9 +1,17 @@
+// 附件类型：图片（内联预览）或通用附件（文件卡片 / 弹窗预览）
+export type AttachmentKind = 'image' | 'attachment';
+
 export type Message = { 
   id?: string;
   role: 'buyer' | 'agent' | 'system'; 
   text: string; 
   time: string; 
+  // 兼容旧版 mock：仅文件名（无真实 URL 时的占位展示）
   attachment?: string;
+  // 上传后端后可直接访问的 URL（/media/... 或 http(s)://...）
+  attachmentUrl?: string;
+  // 附件类型，决定渲染方式
+  attachmentKind?: AttachmentKind;
   contentType?: string;
 }
 

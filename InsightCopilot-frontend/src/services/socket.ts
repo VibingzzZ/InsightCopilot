@@ -75,6 +75,19 @@ class AgentSocket {
       return;
     }
 
+    // 会话结束：后端回传本次 AI 消耗（token / 金额 / 调用次数 / 降级占比）
+    if (payload.type === 'cost_summary' && payload.totals) {
+      const t = payload.totals;
+      const yuan = (typeof t.cost_yuan === 'number' ? t.cost_yuan : (t.cost_cent || 0) / 100).toFixed(4);
+      const totalTokens = t.total_tokens || 0;
+      const degradedPct = t.calls ? Math.round((t.degraded / t.calls) * 100) : 0;
+      useUIStore.getState().notify(
+        `本次 AI 消耗 ¥${yuan}（${t.calls} 次调用 / 共 ${totalTokens} tokens，降级 ${degradedPct}%）`
+      );
+      console.log(`[Cost] session=${payload.session_id}`, t);
+      return;
+    }
+
     // 任务 05：测试接口触发的分析结果广播
     if (payload.type === 'analysis' && payload.result?.draft_reply) {
       useChatStore.getState().setDraft(this.currentConversationId!, payload.result.draft_reply);

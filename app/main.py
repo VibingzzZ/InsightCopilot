@@ -15,6 +15,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -57,6 +58,10 @@ app.add_middleware(
 # 路由自身已带 /api 前缀（如 /api/sessions、/api/health），这里不再叠加 prefix，
 # 否则会变成 /api/api/* 导致 404。
 app.include_router(api_router)
+
+# 上传文件静态服务：/media/<file> 直接返回 data/media/ 下的文件（对应 /api/uploads 上传接口）。
+# 目录由 config 在导入阶段创建，StaticFiles 挂载要求其已存在。
+app.mount(config.UPLOAD_URL_PREFIX, StaticFiles(directory=str(config.UPLOAD_DIR)), name="uploads")
 
 
 # 测试接口（任务 04）：模拟买家消息，跑一次副驾分析并实时广播给 WS 客户端。
@@ -128,6 +133,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     g = _get_graph()
     await manager.connect(session_id, websocket)  # 接受连接并登记，供广播使用
     print(f"[WebSocket] Connected: {session_id}")
+    # 成本观测：在连接级注入 session_id，覆盖「对话流」与「轻量改写指令」两条路径
+    cost.set_session(session_id)
     try:
         while True:
             data = await websocket.receive_text()
@@ -177,8 +184,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
             await websocket.send_json({"type": "start"})
 
-            # 成本观测：把本会话的模型调用归集到 session_id 下，供 /api/cost 统计
-            cost.set_session(session_id)
             try:
                 # 迭代 LangGraph
                 async for event in g.astream(initial_state, stream_mode="updates"):
@@ -193,7 +198,13 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         )
                         await asyncio.sleep(0.5)
             finally:
-                cost.set_session(None)
+                # 会话流结束：把本会话（及该用户累计）的 AI 消耗折算后回传 + 落日志，
+                # 满足赛题「能看到 AI 应用成本」与「降本机制可量化」的加分项。
+                totals = cost.session_totals(session_id)
+                logger.info("cost_summary session=%s %s", session_id, json.dumps(totals, ensure_ascii=False))
+                await websocket.send_json(
+                    {"type": "cost_summary", "session_id": session_id, "totals": totals}
+                )
 
             await websocket.send_json({"type": "done"})
 
@@ -203,6 +214,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         print(f"[WebSocket] Error: {e}")
         await websocket.send_json({"type": "error", "message": str(e)})
     finally:
+        cost.set_session(None)
         manager.disconnect(session_id, websocket)
 
 

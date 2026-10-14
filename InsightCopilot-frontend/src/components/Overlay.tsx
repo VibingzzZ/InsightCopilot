@@ -53,12 +53,34 @@ export function Overlay({ type, conversation, attachment, onClose, onCreate }: O
         
         {type === 'attachment' && (
           <div className={styles['overlay-content']}>
-            <div className={styles['attachment-preview']}>
-              <FileImage size={32} />
-              <strong>{attachment || '会话附件'}</strong>
-              <span>已完成类型识别，等待人工确认内容</span>
-            </div>
-            <p className={styles['overlay-note']}>演示环境不上传或解析原始资料，后端接入后可在此查看安全脱敏结果。</p>
+            {(() => {
+              const isMediaUrl = !!attachment && (attachment.startsWith('/media/') || attachment.startsWith('http'));
+              const isImage = !!attachment && /\.(png|jpe?g|gif|webp|bmp)(\?.*)?$/i.test(attachment);
+              if (isMediaUrl && isImage) {
+                return (
+                  <div className={styles['attachment-image-wrap']}>
+                    <img src={attachment} alt="资料预览" />
+                  </div>
+                );
+              }
+              if (isMediaUrl) {
+                return (
+                  <div className={styles['attachment-preview']}>
+                    <FileImage size={32} />
+                    <strong>{decodeURIComponent(attachment.split('/').pop() || attachment)}</strong>
+                    <a href={attachment} target="_blank" rel="noreferrer" download>下载 / 打开</a>
+                  </div>
+                );
+              }
+              return (
+                <div className={styles['attachment-preview']}>
+                  <FileImage size={32} />
+                  <strong>{attachment || '会话附件'}</strong>
+                  <span>已完成类型识别，等待人工确认内容</span>
+                </div>
+              );
+            })()}
+            <p className={styles['overlay-note']}>资料经后端 /api/uploads 上传，此处展示脱敏预览（演示环境不做原始内容解析）。</p>
           </div>
         )}
         

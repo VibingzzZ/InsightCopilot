@@ -51,6 +51,7 @@ def summary_node(state: CustomerState) -> dict:
             state.get("tickets") or [],
             state.get("promises") or [],
         ),
+        session_id=state.get("session_id"),
     )
 
     return {"timeline_summary": result.summary, "degraded": degraded}

@@ -44,6 +44,7 @@ def triage_node(state: CustomerState) -> dict:
         route="fast",
         mode=state.get("mode", "auto"),
         fallback=lambda: _mock_triage(state["current_message"]),
+        session_id=state.get("session_id"),
     )
 
     return {

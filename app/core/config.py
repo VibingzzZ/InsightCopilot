@@ -94,3 +94,27 @@ CORS_ALLOW_ORIGINS = [
 
 # SSE keep-alive 间隔（秒）
 SSE_KEEPALIVE_SECONDS = int(os.environ.get("SSE_KEEPALIVE_SECONDS", "15"))
+
+# ---------------------------------------------------------------- 文件上传（照片 / 附件）
+# 上传文件落盘到项目内 data/media/，并通过 /media 静态路由对外提供访问。
+# 该目录同时是种子数据与视觉识别节点的约定图片路径（如 data/media/S00015_outpatient_note.jpg）。
+
+UPLOAD_DIR = PROJECT_ROOT / os.environ.get("UPLOAD_DIR", "data/media")
+# 应用导入阶段即确保目录存在（StaticFiles 挂载要求目录已存在；种子数据引用也依赖它）
+try:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:  # 极少数无写权限场景：延迟到首次上传时再报错
+    pass
+
+# 静态访问路径前缀（与 StaticFiles 挂载路径保持一致）
+UPLOAD_URL_PREFIX = os.environ.get("UPLOAD_URL_PREFIX", "/media").strip() or "/media"
+
+# 单文件体积上限（MB）
+MAX_UPLOAD_SIZE_MB = int(os.environ.get("MAX_UPLOAD_SIZE_MB", "10"))
+
+# 类型白名单：仅放行业务场景常见格式，其余一律拒绝（安全脱敏属后续阶段）
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
+ATTACHMENT_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    ".txt", ".csv", ".zip", ".rar", ".7z",
+}

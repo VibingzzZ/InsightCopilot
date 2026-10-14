@@ -43,18 +43,18 @@ def _image_part(message: dict) -> dict | None:
     return None
 
 
-def _run_vision(images: list[dict], prompt: str, mode: str) -> tuple[VisionExtraction, bool]:
+def _run_vision(images: list[dict], prompt: str, mode: str, session_id: str | None = None) -> tuple[VisionExtraction, bool]:
     model = gateway.model_name_for("vision")
     parts = [part for part in (_image_part(m) for m in images) if part]
 
     if mode == "mock" or not parts:
-        cost.record_call(route="vision", model=model, mode=mode, latency_ms=0, degraded=True)
+        cost.record_call(route="vision", model=model, mode=mode, latency_ms=0, degraded=True, session_id=session_id)
         return mock_vision(images), True
 
     if not gateway.is_available("vision"):
         if mode == "real":
             raise ModelUnavailableError("mode=real 但 vision 路由未配置模型，无法执行")
-        cost.record_call(route="vision", model=model, mode=mode, latency_ms=0, error="route unavailable", degraded=True)
+        cost.record_call(route="vision", model=model, mode=mode, latency_ms=0, error="route unavailable", degraded=True, session_id=session_id)
         return mock_vision(images), True
 
     token_capture = cost.TokenCapture()
@@ -74,13 +74,14 @@ def _run_vision(images: list[dict], prompt: str, mode: str) -> tuple[VisionExtra
             input_tokens=token_capture.input_tokens,
             output_tokens=token_capture.output_tokens,
             total_tokens=token_capture.total_tokens,
+            session_id=session_id,
         )
         return result, False
     except Exception as exc:
         latency_ms = int((time.monotonic() - started) * 1000)
         if mode == "real":
             raise
-        cost.record_call(route="vision", model=model, mode=mode, latency_ms=latency_ms, error=str(exc), degraded=True)
+        cost.record_call(route="vision", model=model, mode=mode, latency_ms=latency_ms, error=str(exc), degraded=True, session_id=session_id)
         return mock_vision(images), True
 
 
@@ -90,7 +91,7 @@ def vision_node(state: CustomerState) -> dict:
         return {}
 
     prompt = VISION_PROMPT.format(format_instructions=format_instructions(VisionExtraction))
-    result, degraded = _run_vision(images, prompt, state.get("mode", "auto"))
+    result, degraded = _run_vision(images, prompt, state.get("mode", "auto"), session_id=state.get("session_id"))
 
     first = images[0]
     quote = f"图片识别：{result.clarity} / {result.image_type}" if result.clarity != "待识别" else "图片待人工确认"
