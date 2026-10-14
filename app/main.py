@@ -202,9 +202,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 # 满足赛题「能看到 AI 应用成本」与「降本机制可量化」的加分项。
                 totals = cost.session_totals(session_id)
                 logger.info("cost_summary session=%s %s", session_id, json.dumps(totals, ensure_ascii=False))
-                await websocket.send_json(
-                    {"type": "cost_summary", "session_id": session_id, "totals": totals}
-                )
+                await websocket.send_json({"type": "cost_summary", "session_id": session_id, "totals": totals})
 
             await websocket.send_json({"type": "done"})
 

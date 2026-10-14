@@ -76,9 +76,7 @@ def cost_consumer(
 ) -> dict:
     """单用户成本汇总：把一个消费者名下所有会话的 AI 成本合并（一个用户所有对话）。"""
     session_ids = list(
-        db.scalars(
-            select(ServiceSession.session_id).where(ServiceSession.consumer_id == consumer_id)
-        ).all()
+        db.scalars(select(ServiceSession.session_id).where(ServiceSession.consumer_id == consumer_id)).all()
     )
     return ok(
         request,

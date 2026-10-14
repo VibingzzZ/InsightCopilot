@@ -41,11 +41,10 @@ def test_buyer_message_api_returns_result(client):
 def test_ws_rewrite_valid_command(client, monkeypatch):
     # 强制走 mock 改写：断言文案确定；真模型输出文案不固定，不适合做单测断言
     from app.integrations.model.gateway import gateway
+
     monkeypatch.setattr(gateway, "is_available", lambda *a, **k: False)
     with client.websocket_connect("/api/chat/stream/S-UNIT") as ws:
-        ws.send_json(
-            {"command": "adjust_tone", "params": {"tone": "polite"}, "draft": "退款会尽快处理"}
-        )
+        ws.send_json({"command": "adjust_tone", "params": {"tone": "polite"}, "draft": "退款会尽快处理"})
         msg = ws.receive_json()
         assert msg["type"] == "rewrite"
         assert msg["command"] == "adjust_tone"
@@ -91,6 +90,7 @@ def test_ws_broadcast_from_test_api(client):
 def test_optimize_expression_command(client, monkeypatch):
     # 强制走 mock 改写：断言文案确定（同上）
     from app.integrations.model.gateway import gateway
+
     monkeypatch.setattr(gateway, "is_available", lambda *a, **k: False)
     with client.websocket_connect("/api/chat/stream/S-UNIT") as ws:
         ws.send_json({"command": "optimize_expression", "draft": "关于您的订单我们这边已经在处理了请您耐心等待"})

@@ -53,7 +53,15 @@ def run_structured[T: BaseModel](
         if mode == "real":
             raise ModelUnavailableError(f"mode=real 但路由 {route} 未配置模型，无法执行")
         logger.warning("模型路由 %s 不可用，降级到 Mock 结果", route)
-        cost.record_call(route=route, model=model, mode=mode, latency_ms=0, error="route unavailable", degraded=True, session_id=session_id)
+        cost.record_call(
+            route=route,
+            model=model,
+            mode=mode,
+            latency_ms=0,
+            error="route unavailable",
+            degraded=True,
+            session_id=session_id,
+        )
         return fallback(), True
 
     parser = parser_for(schema)
@@ -79,5 +87,13 @@ def run_structured[T: BaseModel](
         if mode == "real":
             raise
         logger.exception("模型调用失败，降级到 Mock 结果（route=%s）", route)
-        cost.record_call(route=route, model=model, mode=mode, latency_ms=latency_ms, error=str(exc), degraded=True, session_id=session_id)
+        cost.record_call(
+            route=route,
+            model=model,
+            mode=mode,
+            latency_ms=latency_ms,
+            error=str(exc),
+            degraded=True,
+            session_id=session_id,
+        )
         return fallback(), True

@@ -1,4 +1,5 @@
 """端到端验证：通过 8000 的 WS 跑一次真实对话，捕获 cost_summary 帧。"""
+
 import asyncio
 import json
 
@@ -39,10 +40,14 @@ async def main():
         print("node_updates:", node_count)
         if cost_frame:
             t = cost_frame["totals"]
-            yuan = (t.get("cost_yuan") if isinstance(t.get("cost_yuan"), (int, float)) else (t.get("cost_cent") or 0) / 100)
+            yuan = (
+                t.get("cost_yuan") if isinstance(t.get("cost_yuan"), (int, float)) else (t.get("cost_cent") or 0) / 100
+            )
             degraded_pct = round((t.get("degraded", 0) / t["calls"]) * 100) if t.get("calls") else 0
             print(f"  calls={t.get('calls')} tokens={t.get('total_tokens')} cost_yuan={yuan} degraded%={degraded_pct}")
-            print(f"  >>> 前端将提示: 本次 AI 消耗 ¥{yuan:.4f}（{t.get('calls')} 次调用 / 共 {t.get('total_tokens')} tokens，降级 {degraded_pct}%）")
+            print(
+                f"  >>> 前端将提示: 本次 AI 消耗 ¥{yuan:.4f}（{t.get('calls')} 次调用 / 共 {t.get('total_tokens')} tokens，降级 {degraded_pct}%）"
+            )
         else:
             print("  !! 未收到 cost_summary 帧")
 

@@ -32,6 +32,7 @@
 - 残留 uvicorn 进程：Git Bash 的 `taskkill //F //PID` 会被吞掉静默失败；改用 **PowerShell `Stop-Process -Force -Id <pid>`** 才能杀掉。杀前先用 `netstat -ano | grep :8000` 找 pid。固定代码必须跑在 **8000**（前端 socket.ts 硬编码），别用临时端口绕。
 - 改造性未提交改动易被工作树重置吃掉；对已有文件的编辑要连同新文件一起提交。
 - Git Bash 下 `/tmp` 会解析成 Windows `C:\tmp`，导致 curl `-F @/tmp/x`、`--data @/tmp/x` 找不到文件；测试文件请放在项目目录内。
+- **CI 跑 `uv run ruff check .`**：FastAPI 路由参数里的 `File()`/`Form()`/`Depends()` 必须写成 `Annotated[X, File()]` 形式（写在默认值位会被 B008 判错导致 CI 挂）。`uploads.py` 的 `upload_file` 已改为 Annotated 风格，新增/改签名时照此写。
 
 ## 买家消息处理系统（六任务）最终落点
 - 后端：`/api/chat/stream/{id}`（指令分支 + 原 chat 流 + 广播登记）、`POST /api/test/buyer_message`、`/health`。
