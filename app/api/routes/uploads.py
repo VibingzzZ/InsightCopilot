@@ -8,6 +8,7 @@
 
 import uuid
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
 
@@ -32,7 +33,11 @@ def _safe_suffix(filename: str) -> str:
 
 
 @router.post("")
-async def upload_file(request: Request, file: UploadFile = File(...), kind: str = Form("image")) -> dict:
+async def upload_file(
+    request: Request,
+    file: Annotated[UploadFile, File()],
+    kind: Annotated[str, Form()] = "image",
+) -> dict:
     """上传一张照片或一份附件，返回可访问的 URL 与落盘路径。
 
     请求：multipart/form-data，字段 file(必填) + kind(image|attachment, 默认 image)

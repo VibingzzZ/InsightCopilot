@@ -1,7 +1,6 @@
 """端到端验证：通过 8000 的 WS 跑一次真实对话，捕获 cost_summary 帧。"""
 import asyncio
 import json
-import sys
 
 import websockets
 
@@ -17,7 +16,7 @@ async def main():
         while True:
             try:
                 raw = await asyncio.wait_for(ws.recv(), timeout=60)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 print("TIMEOUT waiting for frames")
                 break
             msg = json.loads(raw)
