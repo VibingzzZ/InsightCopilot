@@ -19,11 +19,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.routes import api_router
 from app.agent import cost
 from app.agent.rewrite import rewrite_draft
 from app.agent.run import run_copilot
 from app.agent.schemas.contract import AgentMode, CopilotRequest
+from app.api.routes import api_router
 from app.core import config
 from app.core.envelope import error_response, request_id_of
 from app.core.errors import ApiError, ErrorCode

@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-from app.agent import cost
 from app.agent.llm import run_structured
 from app.agent.mock import mock_rewrite
 from app.agent.schemas.analysis import RewriteResult
