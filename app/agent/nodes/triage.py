@@ -33,8 +33,21 @@ def _mock_triage(message: str) -> TriageAnalysis:
 
 
 def triage_node(state: CustomerState) -> dict:
+    # 把已关联的订单拼成可读上下文，辅助实体抽取（如消息未提商品但订单唯一）
+    orders = state.get("orders") or []
+    order_lines: list[str] = []
+    for o in orders:
+        name = o.get("product_name") or o.get("product_name_masked") or ""
+        oid = o.get("order_id") or ""
+        line = f"- 订单 {oid}：{name}".rstrip("：")
+        if o.get("order_status"):
+            line += f"（{o['order_status']}）"
+        order_lines.append(line)
+    order_context = "\n".join(order_lines) if order_lines else "（无）"
+
     prompt = TRIAGE_PROMPT.format(
         message=state["current_message"],
+        order_context=order_context,
         format_instructions=format_instructions(TriageAnalysis),
     )
 
