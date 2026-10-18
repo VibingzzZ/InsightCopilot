@@ -300,8 +300,19 @@ SQLite，连接串 `sqlite:///./data/sqlite_demo.db`（见 `app/core/database.py
 | GET | `/api/customers/{id}/timeline` | 客户时间线 |
 | GET | `/api/orders` | 订单列表 |
 | GET | `/api/orders/{id}` | 订单详情 |
+| GET | `/api/products` | 商品库（公司产品信息；按品类筛选，默认在售）——售前推荐的事实来源 |
+| GET | `/api/tickets` | 工单列表 |
 | GET | `/api/tickets/{id}` | 工单详情 |
+| POST | `/api/tickets` | 创建工单（如不良反应/退款专项工单，从 `draft_payload` 预填） |
 | PATCH | `/api/tickets/{id}` | 更新工单 |
+| GET | `/api/promises` | 服务承诺队列（履约雷达数据源；按状态/截止/风险筛选） |
+| POST | `/api/promises/extract` | 从一条客服已发送消息抽取并落库承诺（无承诺返回 `created=false`） |
+| POST | `/api/promises/scan` | 即时重算承诺 `due_soon` / `overdue`（演示用，不依赖真实等待） |
+| PATCH | `/api/promises/{id}` | 承诺状态流转（确认 / 变更 / 履约 / 取消 / 升级） |
+| POST | `/api/actions/preview` | 高影响动作预览（不落库，返回将产生的副作用描述） |
+| POST | `/api/actions/confirm` | 确认执行动作（幂等：带 `idempotency_key`，重复提交返回同一结果） |
+| GET | `/api/risk-queue` | 风险队列：主管视角的会话 / 工单 / 承诺聚合 |
+| POST | `/api/demo/reset` | 一键恢复 `baseline-v1` 固定演示数据（工程验收：3 秒内可重置） |
 | POST | `/api/uploads` | 上传照片 / 附件（multipart `file` + `kind=image\|attachment`），校验扩展名白名单 + 体积上限，返回 `/media/...` 可访问 URL |
 | GET | `/api/cost/summary` | 全局成本汇总（token / 金额 / 按路由拆分） |
 | GET | `/api/cost/{session_id}` | 单会话成本明细 |
@@ -311,7 +322,7 @@ SQLite，连接串 `sqlite:///./data/sqlite_demo.db`（见 `app/core/database.py
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| WS | `/api/chat/stream/{session_id}` | 买家消息 → LangGraph 流式分析；会话结束回传 `cost_summary` 帧 |
+| WS | `/api/chat/stream/{session_id}` | 买家消息 → LangGraph 流式分析；按 `session_id` 从数据库加载真实消息/订单/工单/时间线，回复落库后自动抽取服务承诺并广播 `promise`；售前咨询会按肤质匹配在售商品作为推荐证据；会话结束回传 `cost_summary` 帧 |
 | POST | `/api/test/buyer_message` | 模拟买家消息，跑一次副驾分析并广播（仅本地联调，不落库） |
 
 ### 静态资源
@@ -322,9 +333,10 @@ SQLite，连接串 `sqlite:///./data/sqlite_demo.db`（见 `app/core/database.py
 
 ### 规划中 / 暂未挂载
 
-- 风险队列 `/api/risk-queue`（代码在 `app/api/routes/risk.py`，未挂载）
-- 副驾 HTTP 接口 `/api/sessions/{id}/copilot` 与 SSE 流（在 `deprecated_agent.py`，未挂载，等待重构）
-- 动作预览 / 确认、承诺抽取扫描、演示重置等（见 `docs/` 接口设计文档）
+- 副驾 HTTP 接口 `/api/sessions/{id}/copilot` 与 SSE 流（在 `deprecated_agent.py`，未挂载，等待重构；能力已由 WS `/api/chat/stream/{id}` 覆盖）
+- 承诺抽取与建单的「预览 → 确认」前端交互面板（后端 `POST /api/actions/preview|confirm` 已就绪，前端履约雷达当前只读展示 + 模拟扫描）
+
+> 说明：服务承诺跟踪（`/api/promises`、`/api/actions`）、风险队列（`/api/risk-queue`）、演示重置（`/api/demo/reset`）与工单创建（`POST /api/tickets`）均已实现并挂载；前端履约雷达 `RadarView` 已接真实 `/api/promises` 数据。
 
 ## 11. 成本可观测
 
@@ -360,7 +372,9 @@ SQLite，连接串 `sqlite:///./data/sqlite_demo.db`（见 `app/core/database.py
 | --- | --- |
 | `eval/eval_cases.jsonl` | 评测用例集（JSONL，一行一条）。字段直接复用 `TriageAnalysis` 真实枚举（`intent_primary` / `emotion` / `risk` / `entities`）与回复 rubric（`must_contain` / `must_not` / `brand_compliance`） |
 | `eval/run_eval.py` | 评测运行器：直接 `graph.invoke(...)` 拿完整 final state（含 triage 原始 `risk` 全字段 + `reply_draft`），再用 `cost.session_totals` 取成本；四维度评分；LLM 裁判做成 `--judge` 可选开关 |
-| `eval/report.md` | 运行后自动生成的 Markdown 报告（逐用例表 + 维度均值） |
+| `eval/report.md` | 主基准报告（比赛给定的 6 条，运行后自动生成） |
+| `eval/dev_cases.jsonl` | 内部扩展集（8 条，覆盖 6 条未涉及的场景：物流单号、价格、使用不当、竞品对比、平台投诉、严重症状、退换货、复购），用于压测泛化、避免对 6 条过拟合 |
+| `eval/report_dev.md` | 扩展集报告（用 `--in-file eval/dev_cases.jsonl --out eval/report_dev.md` 生成） |
 
 用例格式示例：
 
@@ -387,7 +401,7 @@ SQLite，连接串 `sqlite:///./data/sqlite_demo.db`（见 `app/core/database.py
 
 | 维度 | 评分方式 | 对标字段 |
 | --- | --- | --- |
-| 意图 / 情绪分类 | `intent_primary` / `emotion` 精确匹配；`entities` 用集合 F1 | `intent_primary`, `emotion`, `entities` |
+| 意图 / 情绪分类 | `intent_primary` / `emotion` 精确匹配；`entities` 用**包含匹配 F1**（细粒度命中粗粒度也算中，缓解金标准粒度不一致） | `intent_primary`, `emotion`, `entities` |
 | 风险召回（安全） | `adverse_reaction` / `medical_visit` / `regulatory_complaint` 必须不漏；`severity` 用序数精度（none < mild < obvious < severe） | `risk` 全字段 |
 | 回复质量 | 规则校验 `must_contain` / `must_not`；加 `--judge` 后由 deepseek-flash 按 1–5 评品牌合规 / 共情 / 准确 / 可操作 | `reply_draft.reply` |
 | 成本效率 | 直接读 `cost_summary`：平均 token、调用次数、降级占比 | 已落地的成本接口 |
@@ -403,11 +417,21 @@ uv run python eval/run_eval.py --cases 不良反应  # 按 category 关键词过
 uv run python eval/run_eval.py --judge          # 开启 LLM 裁判（会消耗 token）
 ```
 
-### 基线参考（6 条样例）
+### 基线参考（主基准 · 比赛 6 条）
 
 - 风险召回 overall = **1.0**（未漏判任何不良反应 / 就医 / 监管威胁）
-- 意图 0.833、情绪 0.833、实体 F1 0.444（暴露实体抽取偏弱，可作为迭代目标）
-- 平均 **1980 tokens / 用例**，每用例仅 **2 次真实调用**（印证降本设计）
+- 意图准确率 **1.0**、情绪准确率 0.833、实体 F1 **0.833**（实体抽取经优化后由 0.444 提升）
+- 综合质量分 **0.884**；平均 **2627 tokens / 用例**，每用例仅 **2 次真实调用**（印证降本设计）
+
+### 评测集覆盖策略
+
+比赛给定的 6 条是**锁定基准**，直接用于对外汇报 / 比赛评分，**不要为刷分针对这 6 条过拟合**（那样在隐藏 / 扩充样本上会塌）。为验证「真实泛化能力」而非「凑巧得分」，另设内部扩展集 `eval/dev_cases.jsonl`（8 条，覆盖 6 条未涉及的场景：物流单号、价格咨询、使用不当、竞品对比、平台投诉、严重症状、退换货、复购），单独跑：
+
+```bash
+uv run python eval/run_eval.py --in-file eval/dev_cases.jsonl --out eval/report_dev.md
+```
+
+扩展集结果（截至最近一次优化）：意图 1.0、实体 F1 1.0、风险召回 0.984 —— 说明实体 / 意图 / 订单上下文等通用增强在未见场景上同样成立，而非只过拟合 6 条。扩展集的 `expected` 由我们自行标注，跑出 low-score 时优先复查「金标准是不是写错了」（评测集的价值之一就是测标注质量）。
 
 迭代闭环：针对 low-score case 修改 prompt / 节点 → 重跑 → 看提升。
 

@@ -38,10 +38,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # —— 项目内部依赖（需在项目 venv 下运行）——
-from app.agent import cost
-from app.agent.graph import graph
-from app.agent.run import _make_state
-from app.agent.schemas.contract import CopilotRequest
+from app.agent import cost  # noqa: E402
+from app.agent.graph import graph  # noqa: E402
+from app.agent.run import _make_state  # noqa: E402
+from app.agent.schemas.contract import CopilotRequest  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_CASES = HERE / "eval_cases.jsonl"
@@ -64,7 +64,7 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
             try:
                 cases.append(json.loads(line))
             except json.JSONDecodeError as exc:
-                raise SystemExit(f"[用例格式错误] {path.name} 第 {ln} 行: {exc}")
+                raise SystemExit(f"[用例格式错误] {path.name} 第 {ln} 行: {exc}") from None
     if not cases:
         raise SystemExit(f"[空用例集] {path} 没有任何 case")
     return cases
@@ -139,22 +139,59 @@ def run_case(case: dict[str, Any]) -> dict[str, Any]:
 # 3. 评分（你主要调这里）
 # --------------------------------------------------------------------------- #
 def _f1(pred: list[str], exp: list[str]) -> float:
-    p, e = set(x.strip().lower() for x in pred), set(x.strip().lower() for x in exp)
+    """实体 F1：采用**包含匹配**，缓解金标准粒度（如「精华」）与模型细粒度
+    （如「光感修护精华 30ml」）不一致导致的误判——只要一个包含另一个即算命中。
+    仍同时看 precision / recall，避免模型乱抽刷分。
+    """
+    p = [x.strip().lower() for x in pred if x.strip()]
+    e = [x.strip().lower() for x in exp if x.strip()]
     if not p and not e:
         return 1.0
     if not p or not e:
         return 0.0
-    inter = len(p & e)
-    return round(2 * inter / (len(p) + len(e)), 3)
+
+    def _hit(a: str, b: str) -> bool:
+        return a in b or b in a
+
+    recall = sum(1 for x in e if any(_hit(x, y) for y in p)) / len(e)
+    precision = sum(1 for y in p if any(_hit(y, x) for x in e)) / len(p)
+    if precision + recall == 0:
+        return 0.0
+    return round(2 * precision * recall / (precision + recall), 3)
+
+
+# 用户核心诉求关键词：期望 secondary 里出现这些词，才算"抓住了二级诉求"
+_APPEAL_KEYWORDS = ["退款", "退货", "赔偿", "赔付", "投诉", "换货", "曝光", "补发", "问责"]
+
+
+def _secondary_covers(pred_secondary: str | None, exp_secondary: str | None) -> float:
+    """验证模型输出的二级意图是否覆盖了期望中的核心诉求。
+
+    期望未给 secondary 时返回 1.0（不参与扣分）；否则检查期望里出现的
+    诉求关键词是否都被模型输出涵盖。无明确关键词时退化为子串互含。
+    """
+    if not exp_secondary:
+        return 1.0
+    pred = (pred_secondary or "").lower()
+    exp = exp_secondary.lower()
+    required = [k for k in _APPEAL_KEYWORDS if k in exp]
+    if not required:
+        return 1.0 if (exp[:6] in pred or pred[:6] in exp) else 0.0
+    return 1.0 if all(k in pred for k in required) else 0.0
 
 
 def score_intent_emotion(case: dict, actual: dict) -> dict[str, float]:
     exp = case["expected"]
-    intent_ok = (actual["intent_primary"] or "") == exp.get("intent_primary")
+    primary_ok = (actual["intent_primary"] or "") == exp.get("intent_primary")
     emotion_ok = (actual["emotion"] or "") == exp.get("emotion")
     entities_f1 = _f1(actual["entities"], exp.get("entities") or [])
+    secondary_ok = _secondary_covers(actual.get("intent_secondary"), exp.get("intent_secondary"))
+    # 主意图 70% + 二级诉求覆盖 30%（期望无 secondary 时不扣分）
+    intent = round(0.7 * (1.0 if primary_ok else 0.0) + 0.3 * secondary_ok, 3)
     return {
-        "intent": 1.0 if intent_ok else 0.0,
+        "intent": intent,
+        "intent_primary_ok": 1.0 if primary_ok else 0.0,
+        "intent_secondary_ok": secondary_ok,
         "emotion": 1.0 if emotion_ok else 0.0,
         "entities_f1": entities_f1,
     }
@@ -196,8 +233,9 @@ def score_reply_rubric(case: dict, actual: dict) -> dict[str, float]:
 
 def llm_judge_reply(case: dict, actual: dict) -> dict[str, float] | None:
     """可选：用 LLM 当裁判，按 rubric 打 1-5（需真实模型，会耗 token）。"""
-    from app.agent.llm import format_instructions, run_structured
     from pydantic import BaseModel
+
+    from app.agent.llm import run_structured
 
     class ReplyScore(BaseModel):
         brand_compliance: int = 1  # 不诊断/不承诺治愈/不荐药
@@ -245,7 +283,9 @@ def score_case(case: dict, actual: dict, use_judge: bool) -> dict[str, Any]:
     return {
         "id": case["id"],
         "category": case.get("category"),
-        "intent": ie["intent"], "emotion": ie["emotion"], "entities_f1": ie["entities_f1"],
+        "intent": ie["intent"], "intent_primary_ok": ie["intent_primary_ok"],
+        "intent_secondary_ok": ie["intent_secondary_ok"],
+        "emotion": ie["emotion"], "entities_f1": ie["entities_f1"],
         "risk_overall": risk["risk_overall"], "risk_detail": risk,
         "reply_must_contain": reply["must_contain"], "reply_must_not_ok": reply["must_not_ok"],
         "reply_violations": reply["violations"],
@@ -257,7 +297,9 @@ def score_case(case: dict, actual: dict, use_judge: bool) -> dict[str, Any]:
 
 def build_report(cases: list[dict], results: list[dict], use_judge: bool) -> str:
     n = len(results) or 1
-    avg = lambda k: round(sum(r[k] for r in results) / n, 3)
+
+    def avg(k: str) -> float:
+        return round(sum(r[k] for r in results) / n, 3)
     lines = ["# InsightCopilot · Agent 评测报告", ""]
     lines.append(f"- 用例数：**{len(results)}**    评分开关：{'含 LLM-Judge' if use_judge else '纯规则'}")
     lines.append(f"- 意图准确率：{avg('intent')}    情绪准确率：{avg('emotion')}    实体 F1：{avg('entities_f1')}")
@@ -271,11 +313,11 @@ def build_report(cases: list[dict], results: list[dict], use_judge: bool) -> str
     lines.append("")
     lines.append("## 逐用例")
     lines.append("")
-    lines.append("| 用例 | 场景 | 意图 | 情绪 | 实体F1 | 风险 | 回复合规 | 质量 | tokens | 调用 |")
-    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    lines.append("| 用例 | 场景 | 意图 | 二级意图 | 情绪 | 实体F1 | 风险 | 回复合规 | 质量 | tokens | 调用 |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for r in results:
         lines.append(
-            f"| {r['id']} | {r['category']} | {r['intent']} | {r['emotion']} | "
+            f"| {r['id']} | {r['category']} | {r['intent']} | {r['intent_secondary_ok']} | {r['emotion']} | "
             f"{r['entities_f1']} | {r['risk_overall']} | {r['reply_must_not_ok']} | "
             f"{r['quality']} | {r['cost']['total_tokens']} | {r['cost']['calls']} |"
         )

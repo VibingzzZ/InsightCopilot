@@ -15,7 +15,10 @@
 import argparse
 import json
 import sys
+import uuid
 from typing import Any
+
+from sqlalchemy import select
 
 from app.agent import cost
 from app.agent.graph import graph
@@ -31,6 +34,7 @@ from app.agent.schemas.contract import (
     PromiseExtractResult,
 )
 from app.agent.state import CustomerState
+from app.models import Consumer, Message, Product, SalesOrder, ServiceEvent, ServiceSession, ServiceTicket
 
 # 三个样例契约。后端照这份结构预组装上下文即可 —— 字段名就是对接口径。
 CASES: dict[str, dict[str, Any]] = {
@@ -157,6 +161,7 @@ def _make_state(request: CopilotRequest) -> CustomerState:
         "messages": request.messages,
         "orders": request.orders,
         "tickets": request.tickets,
+        "products": request.products,
         "promises": request.promises,
         "events": request.events,
         "mode": request.mode,
@@ -177,6 +182,7 @@ def _make_state(request: CopilotRequest) -> CustomerState:
         # 数据层
         "linked_order": {},
         "linked_tickets": [],
+        "matched_products": [],
         # 证据层
         "evidence": [],
         # 处置层
@@ -192,6 +198,148 @@ def _make_state(request: CopilotRequest) -> CustomerState:
         "degraded": False,
         "model_route": "mock",
     }
+
+
+def load_product_context(db: Any) -> list[dict[str, Any]]:
+    """加载在售商品库（售前推荐的事实来源）。全局目录，与具体会话无关。"""
+    products = db.scalars(select(Product).where(Product.status == "on_shelf")).all()
+    return [
+        {
+            "product_id": p.product_id,
+            "name": p.name,
+            "category": p.category,
+            "key_ingredients": p.key_ingredients,
+            "suitable_skin_types": p.suitable_skin_types,
+            "benefits": p.benefits,
+            "cautions": p.cautions,
+            "price_cent": p.price_cent,
+            "status": p.status,
+        }
+        for p in products
+    ]
+
+
+def build_context_from_session(
+    db: Any,
+    session_id: str,
+    current_message: str,
+    *,
+    customer_name_masked: str | None = None,
+) -> CopilotRequest:
+    """从数据库加载真实会话上下文，组装成副驾请求。
+
+    真实数据贯通（对应缺口 B）：用会话的历史消息 / 消费者订单 / 工单 / 时间线事件
+    替换原先写死的 ORD-DEMO 假数据，让 triage 与事实核验基于真实库。
+    会话不存在时回退为最小可用上下文，保证 WS 演示不崩。
+    """
+    session = db.get(ServiceSession, session_id)
+    if session is None:
+        return CopilotRequest(
+            session_id=session_id,
+            customer_name_masked=customer_name_masked or "消费者",
+            current_message=current_message,
+            messages=[
+                {
+                    "message_id": "M-LOCAL",
+                    "sender_type": "customer",
+                    "message_text": current_message,
+                    "content_type": "text",
+                }
+            ],
+            orders=[],
+            tickets=[],
+            promises=[],
+            events=[],
+            mode="auto",
+        )
+
+    consumer = db.get(Consumer, session.consumer_id)
+    name = customer_name_masked or (consumer.display_name_masked if consumer else "消费者")
+
+    messages = db.scalars(
+        select(Message)
+        .where(Message.session_id == session_id)
+        .order_by(Message.seq_no.asc(), Message.sent_at.asc())
+    ).all()
+    buyer_id = f"M-WS-{uuid.uuid4().hex[:10]}"
+    message_ctx = [
+        {
+            "message_id": m.message_id,
+            "sender_type": m.role if m.role in ("customer", "agent", "system") else "customer",
+            "message_text": m.message_text or "",
+            "content_type": m.content_type or "text",
+        }
+        for m in messages
+    ]
+    # 把本次进线的买家消息补到末尾，使 triage 能看到最新诉求
+    message_ctx.append(
+        {
+            "message_id": buyer_id,
+            "sender_type": "customer",
+            "message_text": current_message,
+            "content_type": "text",
+        }
+    )
+
+    orders = db.scalars(
+        select(SalesOrder).where(SalesOrder.consumer_id == session.consumer_id)
+    ).all()
+    order_ctx = [
+        {
+            "order_id": o.order_id,
+            "order_no": o.order_no,
+            "order_status": o.order_status,
+            "product_name": o.product_name,
+            "tracking_no_masked": o.tracking_no_masked,
+            "paid_amount_cent": o.paid_amount_cent,
+        }
+        for o in orders
+    ]
+
+    tickets = db.scalars(
+        select(ServiceTicket).where(ServiceTicket.consumer_id == session.consumer_id)
+    ).all()
+    ticket_ctx = [
+        {
+            "ticket_id": t.ticket_id,
+            "ticket_no": t.ticket_no,
+            "ticket_type": t.ticket_type,
+            "status": t.status,
+            "priority": t.priority,
+        }
+        for t in tickets
+    ]
+
+    events = db.scalars(
+        select(ServiceEvent)
+        .where(ServiceEvent.session_id == session_id)
+        .order_by(ServiceEvent.occurred_at.asc())
+    ).all()
+    event_ctx = [
+        {
+            "event_id": e.event_id,
+            "event_type": e.event_type,
+            "occurred_at": e.occurred_at,
+            "title": e.title,
+        }
+        for e in events
+    ]
+
+    # 商品库：公司产品信息（售前推荐的事实来源），全局目录，按需全量传入由节点检索
+    product_ctx = load_product_context(db)
+
+    return CopilotRequest(
+        session_id=session_id,
+        customer_name_masked=name,
+        current_message=current_message,
+        messages=message_ctx,
+        orders=order_ctx,
+        tickets=ticket_ctx,
+        products=product_ctx,
+        promises=[],
+        events=event_ctx,
+        mode="auto",
+    )
 
 
 def run_copilot(request: CopilotRequest) -> CopilotResult:

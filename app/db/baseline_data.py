@@ -32,6 +32,7 @@ class BaselineData:
     tickets: list[dict[str, Any]] = field(default_factory=list)
     promises: list[dict[str, Any]] = field(default_factory=list)
     events: list[dict[str, Any]] = field(default_factory=list)
+    products: list[dict[str, Any]] = field(default_factory=list)
 
     def all_session_ids(self) -> list[str]:
         return [s["session_id"] for s in self.sessions]
@@ -468,7 +469,127 @@ def build_baseline(now: datetime) -> BaselineData:
         ),
     ]
 
+    # 商品库：固定演示目录，供售前推荐检索
+    data.products = [dict(item) for item in PRODUCT_CATALOG]
+
     return data
+
+
+# ------------------------------------------------------------ 商品库（公司产品信息）
+# 售前推荐的事实来源：品类 + 核心成分 + 适用肤质 + 功效 + 注意事项。
+# 固定演示目录，任何时候重置后一致； Agent 只能基于这里真实在售的商品做推荐，绝不编造。
+PRODUCT_CATALOG: list[dict[str, Any]] = [
+    {
+        "product_id": "P-CLEAN-AA",
+        "name": "氨基酸温和洁面乳 120g",
+        "category": "洁面",
+        "key_ingredients": "氨基酸表活,甘油",
+        "suitable_skin_types": "敏感肌,干性肌肤,中性肌肤",
+        "benefits": "温和清洁不紧绷，洗后保湿度好",
+        "cautions": "避开眼周；如入眼请用清水冲洗",
+        "price_cent": 8900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-CREAM-SOOTHE",
+        "name": "舒缓修护面霜 50g",
+        "category": "面霜",
+        "key_ingredients": "积雪草,神经酰胺,泛醇",
+        "suitable_skin_types": "敏感肌,干性肌肤",
+        "benefits": "舒缓泛红刺痛，帮助修护皮肤屏障",
+        "cautions": "皮肤破损或渗出部位慎用；持续不适请就医",
+        "price_cent": 18900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-ESSENCE-HA",
+        "name": "玻尿酸保湿精华 30ml",
+        "category": "精华",
+        "key_ingredients": "透明质酸,泛醇",
+        "suitable_skin_types": "干性肌肤,敏感肌,中性肌肤",
+        "benefits": "深层补水保湿，缓解干燥紧绷",
+        "cautions": "无明显慎用；建议搭配乳液/面霜锁水",
+        "price_cent": 13900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-ESSENCE-NIA",
+        "name": "烟酰胺控油精华 30ml",
+        "category": "精华",
+        "key_ingredients": "烟酰胺,锌",
+        "suitable_skin_types": "油性肌肤,混合性肌肤",
+        "benefits": "控油、帮助细致毛孔、改善暗沉",
+        "cautions": "需从低频率建立耐受；白天务必防晒",
+        "price_cent": 15900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-ESSENCE-BHA",
+        "name": "水杨酸焕肤精华 30ml",
+        "category": "精华",
+        "key_ingredients": "水杨酸",
+        "suitable_skin_types": "油性肌肤",
+        "benefits": "疏通毛孔、改善闭口与痘痘",
+        "cautions": "敏感肌/孕妇慎用；仅夜间使用，需建立耐受并加强防晒",
+        "price_cent": 14900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-ESSENCE-VC",
+        "name": "维C提亮精华 30ml",
+        "category": "精华",
+        "key_ingredients": "抗坏血酸,烟酰胺",
+        "suitable_skin_types": "中性肌肤,油性肌肤,混合性肌肤",
+        "benefits": "提亮肤色、抗氧化",
+        "cautions": "敏感肌慎用；白天加强防晒",
+        "price_cent": 16900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-SUN-SPF50",
+        "name": "温和防晒乳 SPF50 50ml",
+        "category": "防晒",
+        "key_ingredients": "氧化锌,物理防晒剂",
+        "suitable_skin_types": "敏感肌,中性肌肤,油性肌肤",
+        "benefits": "高倍防晒、肤感清爽不闷痘",
+        "cautions": "需用卸妆产品清洁；出汗后及时补涂",
+        "price_cent": 12900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-MASK-SOOTHE",
+        "name": "修护舒缓面膜 5片",
+        "category": "面膜",
+        "key_ingredients": "积雪草,维生素B5",
+        "suitable_skin_types": "敏感肌,干性肌肤",
+        "benefits": "晒后舒缓、密集补水",
+        "cautions": "每周建议2-3次，不宜过频",
+        "price_cent": 9900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-LOTION-OIL",
+        "name": "清爽控油乳液 100ml",
+        "category": "乳液",
+        "key_ingredients": "金缕梅,烟酰胺",
+        "suitable_skin_types": "油性肌肤,混合性肌肤",
+        "benefits": "控油保湿、质地清爽不黏腻",
+        "cautions": "无明显慎用",
+        "price_cent": 11900,
+        "status": "on_shelf",
+    },
+    {
+        "product_id": "P-CLEAN-FOAM",
+        "name": "氨基酸洁面泡沫 150ml",
+        "category": "洁面",
+        "key_ingredients": "氨基酸表活",
+        "suitable_skin_types": "敏感肌,油性肌肤,中性肌肤",
+        "benefits": "绵密泡沫、温和洁净",
+        "cautions": "无明显慎用",
+        "price_cent": 7900,
+        "status": "on_shelf",
+    },
+]
 
 
 def _msg(

@@ -21,15 +21,18 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.agent import cost
 from app.agent.rewrite import rewrite_draft
-from app.agent.run import run_copilot
+from app.agent.run import _make_state, build_context_from_session, load_product_context, run_copilot
 from app.agent.schemas.contract import AgentMode, CopilotRequest
 from app.api.routes import api_router
 from app.core import config
+from app.core.database import SessionLocal
 from app.core.envelope import error_response, request_id_of
 from app.core.errors import ApiError, ErrorCode
 from app.core.middleware import RequestContextMiddleware
 from app.realtime.connection import manager
+from app.schemas.api import SessionMessageCreateRequest
 from app.schemas.commands import CommandError, parse_command
+from app.services import session_service
 
 logger = logging.getLogger("app.main")
 
@@ -81,6 +84,8 @@ class BuyerMessageOut(BaseModel):
 @app.post("/api/test/buyer_message", response_model=BuyerMessageOut)
 async def simulate_buyer_message(payload: BuyerMessageIn) -> BuyerMessageOut:
     """模拟买家发送消息，触发一次副驾分析并实时广播给 WS 客户端。"""
+    with SessionLocal() as db:
+        products = await run_in_threadpool(load_product_context, db)
     req = CopilotRequest(
         session_id=payload.session_id,
         customer_name_masked=payload.customer_name_masked,
@@ -93,6 +98,7 @@ async def simulate_buyer_message(payload: BuyerMessageIn) -> BuyerMessageOut:
                 "content_type": "text",
             }
         ],
+        products=products,
         mode=payload.mode,
     )
 
@@ -169,26 +175,22 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             text = payload.get("text", "") if isinstance(payload, dict) else str(payload)
             print(f"[WebSocket] Received from {session_id}: {text}")
 
-            # 构造 LangGraph 初始状态，使用 mock mode 防止没有配置 API key 时崩溃
-            initial_state = {
-                "session_id": session_id,
-                "customer_name_masked": "消费者",
-                "current_message": text,
-                "messages": [{"role": "buyer", "text": text}],
-                "orders": [{"id": "ORD-DEMO", "item": "测试商品"}],
-                "tickets": [],
-                "promises": [],
-                "events": [],
-                "mode": "auto",  # 已配 DeepSeek 时走真实分析；无 Key/调用失败自动降级 Mock（不再强制 mock）
-            }
+            # 缺口 B：从数据库加载真实会话上下文，替换原先写死的 ORD-DEMO 假数据，
+            # 让 triage / 事实核验基于真实订单、工单与时间线事件。
+            with SessionLocal() as db:
+                request = await run_in_threadpool(build_context_from_session, db, session_id, text)
+            initial_state = _make_state(request)
 
             await websocket.send_json({"type": "start"})
 
+            merged: dict = {}
             try:
                 # 迭代 LangGraph
                 async for event in g.astream(initial_state, stream_mode="updates"):
                     for node_name, node_state in event.items():
                         print(f"--- Node: {node_name} ---")
+                        if isinstance(node_state, dict):
+                            merged.update(node_state)
                         await websocket.send_json(
                             {
                                 "type": "node_update",
@@ -203,6 +205,44 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 totals = cost.session_totals(session_id)
                 logger.info("cost_summary session=%s %s", session_id, json.dumps(totals, ensure_ascii=False))
                 await websocket.send_json({"type": "cost_summary", "session_id": session_id, "totals": totals})
+
+            # 把副驾生成的回复作为客服最终消息落库（send=True 触发承诺抽取钩子），
+            # 再广播分析结果 + 抽到的承诺，闭环到「履约雷达」。
+            final_reply = (merged.get("reply_draft") or "").strip()
+            promise = None
+            if final_reply:
+                try:
+                    with SessionLocal() as db:
+                        sent = await run_in_threadpool(
+                            session_service.append_message,
+                            db,
+                            session_id,
+                            payload=SessionMessageCreateRequest(role="agent", content=final_reply, send=True),
+                            operator_id="agent",
+                        )
+                        promise = sent.get("promise")
+                except Exception as exc:  # 落库失败不应中断演示
+                    logger.warning("persist agent reply failed: %s", exc)
+
+            await websocket.send_json(
+                {
+                    "type": "analysis",
+                    "session_id": session_id,
+                    "insight": jsonable_encoder(
+                        {
+                            "intent": merged.get("intent"),
+                            "emotion": merged.get("emotion"),
+                            "risk_level": merged.get("risk_level"),
+                            "risk_reasons": merged.get("risk_reasons"),
+                            "evidence": merged.get("evidence"),
+                            "draft_reply": final_reply,
+                            "model_route": merged.get("model_route"),
+                            "degraded": merged.get("degraded"),
+                        }
+                    ),
+                    "promise": promise,
+                }
+            )
 
             await websocket.send_json({"type": "done"})
 

@@ -60,7 +60,8 @@ class ActionPreviewRequest(BaseModel):
 
 
 class ActionConfirmRequest(BaseModel):
-    action_id: str
+    action_id: str | None = None
+    action_type: ActionType
     idempotency_key: str = Field(min_length=8, max_length=128)
     payload: dict[str, Any] | None = None
 
@@ -99,6 +100,16 @@ class DemoResetRequest(BaseModel):
     scenario: Literal["all", "refund", "adverse_reaction", "gift_resend"] = "all"
     seed: str = "baseline-v1"
     preserve_import: bool = True
+
+
+class TicketCreateRequest(BaseModel):
+    """创建工单（POST /api/tickets）：从副驾/动作确认的 draft_payload 预填。"""
+
+    session_id: str = Field(min_length=1)
+    ticket_type: str = Field(min_length=1, max_length=50)
+    priority: TicketPriority = "normal"
+    reason: str | None = Field(None, max_length=500)
+    draft_payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class TicketUpdateRequest(BaseModel):

@@ -9,8 +9,10 @@
   而不是随手挑一条，避免把 A 订单的事实说给 B 订单的消费者。
 """
 
+from app.agent.mock import skin_profile
 from app.agent.state import CustomerState
 from app.agent.tools.order import order_id_of, product_name_of, tracking_of
+from app.agent.tools.product import match_products
 from app.agent.tools.ticket import ticket_id_of
 
 
@@ -62,4 +64,17 @@ def tool_query_node(state: CustomerState) -> dict:
     # ticket_id_of 在这里只用于保证工单是可用结构，避免把空字典带进证据层
     linked_tickets = [t for t in linked_tickets if ticket_id_of(t)]
 
-    return {"linked_order": linked_order, "linked_tickets": linked_tickets}
+    # 售前推荐：仅「售前咨询 + L0」才匹配在售商品；
+    # 高风险/不良反应场景不推荐商品，避免在用户不适时推销。
+    matched_products: list[dict] = []
+    intent_primary = (state.get("intent") or {}).get("primary")
+    if intent_primary == "售前咨询" and state.get("risk_level") == "L0":
+        profile = skin_profile(state.get("current_message", ""), entities)
+        skin_type = profile.split("肤质：", 1)[1].split("；", 1)[0] if "肤质：" in profile else None
+        matched_products = match_products(entities, skin_type, state.get("products") or [])
+
+    return {
+        "linked_order": linked_order,
+        "linked_tickets": linked_tickets,
+        "matched_products": matched_products,
+    }
