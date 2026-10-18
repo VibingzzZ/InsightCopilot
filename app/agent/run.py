@@ -19,6 +19,7 @@ import uuid
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
 from app.agent import cost
 from app.agent.graph import graph
@@ -201,8 +202,15 @@ def _make_state(request: CopilotRequest) -> CustomerState:
 
 
 def load_product_context(db: Any) -> list[dict[str, Any]]:
-    """加载在售商品库（售前推荐的事实来源）。全局目录，与具体会话无关。"""
-    products = db.scalars(select(Product).where(Product.status == "on_shelf")).all()
+    """加载在售商品库（售前推荐的事实来源）。全局目录，与具体会话无关。
+
+    商品库尚未初始化（全新/旧库未跑 init_db）时优雅降级：返回空列表，
+    不推荐商品，但不阻断其它能力与演示。
+    """
+    try:
+        products = db.scalars(select(Product).where(Product.status == "on_shelf")).all()
+    except OperationalError:
+        return []
     return [
         {
             "product_id": p.product_id,

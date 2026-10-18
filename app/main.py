@@ -8,8 +8,9 @@
 import asyncio
 import json
 import logging
+from typing import Annotated
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -17,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from sqlalchemy.orm import Session as DbSession
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.agent import cost
@@ -26,6 +28,7 @@ from app.agent.schemas.contract import AgentMode, CopilotRequest
 from app.api.routes import api_router
 from app.core import config
 from app.core.database import SessionLocal
+from app.core.deps import get_db
 from app.core.envelope import error_response, request_id_of
 from app.core.errors import ApiError, ErrorCode
 from app.core.middleware import RequestContextMiddleware
@@ -82,10 +85,9 @@ class BuyerMessageOut(BaseModel):
 
 
 @app.post("/api/test/buyer_message", response_model=BuyerMessageOut)
-async def simulate_buyer_message(payload: BuyerMessageIn) -> BuyerMessageOut:
+async def simulate_buyer_message(payload: BuyerMessageIn, db: Annotated[DbSession, Depends(get_db)]) -> BuyerMessageOut:
     """模拟买家发送消息，触发一次副驾分析并实时广播给 WS 客户端。"""
-    with SessionLocal() as db:
-        products = await run_in_threadpool(load_product_context, db)
+    products = await run_in_threadpool(load_product_context, db)
     req = CopilotRequest(
         session_id=payload.session_id,
         customer_name_masked=payload.customer_name_masked,

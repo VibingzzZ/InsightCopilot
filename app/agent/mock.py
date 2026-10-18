@@ -308,7 +308,8 @@ def mock_promise(message_text: str) -> PromiseExtraction:
     due = ""
     for pattern in (
         r"今天\s*\d{1,2}\s*[:点]\s*\d{0,2}\s*前?",
-        r"明天(上午|下午|晚上)?",
+        # 明天/后天 + 时段 + 可选钟点：必须连钟点一起抽出，否则 time.py 只能按时段默认值算
+        r"(?:明天|后天)\s*(?:上午|中午|下午|晚上)?(?:\s*\d{1,2}\s*[:点]\s*\d{0,2})?",
         r"\d+\s*个?\s*工作日",
         r"\d+\s*小时",
         r"\d+\s*天内?",
