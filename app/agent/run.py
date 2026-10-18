@@ -257,9 +257,7 @@ def build_context_from_session(
     name = customer_name_masked or (consumer.display_name_masked if consumer else "消费者")
 
     messages = db.scalars(
-        select(Message)
-        .where(Message.session_id == session_id)
-        .order_by(Message.seq_no.asc(), Message.sent_at.asc())
+        select(Message).where(Message.session_id == session_id).order_by(Message.seq_no.asc(), Message.sent_at.asc())
     ).all()
     buyer_id = f"M-WS-{uuid.uuid4().hex[:10]}"
     message_ctx = [
@@ -281,9 +279,7 @@ def build_context_from_session(
         }
     )
 
-    orders = db.scalars(
-        select(SalesOrder).where(SalesOrder.consumer_id == session.consumer_id)
-    ).all()
+    orders = db.scalars(select(SalesOrder).where(SalesOrder.consumer_id == session.consumer_id)).all()
     order_ctx = [
         {
             "order_id": o.order_id,
@@ -296,9 +292,7 @@ def build_context_from_session(
         for o in orders
     ]
 
-    tickets = db.scalars(
-        select(ServiceTicket).where(ServiceTicket.consumer_id == session.consumer_id)
-    ).all()
+    tickets = db.scalars(select(ServiceTicket).where(ServiceTicket.consumer_id == session.consumer_id)).all()
     ticket_ctx = [
         {
             "ticket_id": t.ticket_id,
@@ -311,9 +305,7 @@ def build_context_from_session(
     ]
 
     events = db.scalars(
-        select(ServiceEvent)
-        .where(ServiceEvent.session_id == session_id)
-        .order_by(ServiceEvent.occurred_at.asc())
+        select(ServiceEvent).where(ServiceEvent.session_id == session_id).order_by(ServiceEvent.occurred_at.asc())
     ).all()
     event_ctx = [
         {

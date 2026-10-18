@@ -210,9 +210,13 @@ def score_risk(case: dict, actual: dict) -> dict[str, float]:
     d = abs(SEVERITY_ORDER.get(act["severity"], 0) - SEVERITY_ORDER.get(exp.get("severity", "none"), 0))
     sev = 1.0 if d == 0 else (0.5 if d == 1 else 0.0)
     overall = round((sum(bools.values()) + sev) / (len(bools) + 1), 3)
-    return {"adverse_reaction": bools["adverse_reaction"], "severity": sev,
-            "medical_visit": bools["medical_visit"], "regulatory": bools["regulatory_complaint"],
-            "risk_overall": overall}
+    return {
+        "adverse_reaction": bools["adverse_reaction"],
+        "severity": sev,
+        "medical_visit": bools["medical_visit"],
+        "regulatory": bools["regulatory_complaint"],
+        "risk_overall": overall,
+    }
 
 
 def score_reply_rubric(case: dict, actual: dict) -> dict[str, float]:
@@ -239,9 +243,9 @@ def llm_judge_reply(case: dict, actual: dict) -> dict[str, float] | None:
 
     class ReplyScore(BaseModel):
         brand_compliance: int = 1  # 不诊断/不承诺治愈/不荐药
-        empathy: int = 1           # 共情适当
-        accuracy: int = 1          # 信息准确、不编造
-        actionability: int = 1     # 给出可操作下一步
+        empathy: int = 1  # 共情适当
+        accuracy: int = 1  # 信息准确、不编造
+        actionability: int = 1  # 给出可操作下一步
         overall: int = 1
 
     rubric = case["expected"].get("reply_rubric") or {}
@@ -254,8 +258,9 @@ def llm_judge_reply(case: dict, actual: dict) -> dict[str, float] | None:
         "accuracy=有无编造事实；actionability=是否给出可操作下一步。"
     )
     try:
-        res, _ = run_structured(prompt=prompt, schema=ReplyScore, route="fast",
-                                mode="auto", session_id=actual["session_id"])
+        res, _ = run_structured(
+            prompt=prompt, schema=ReplyScore, route="fast", mode="auto", session_id=actual["session_id"]
+        )
         return {
             "brand_compliance": res.brand_compliance / 5,
             "empathy": res.empathy / 5,
@@ -278,16 +283,26 @@ def score_case(case: dict, actual: dict, use_judge: bool) -> dict[str, Any]:
     judge = llm_judge_reply(case, actual) if use_judge else None
 
     # 一个 case 的总分（可按权重调）
-    quality = (ie["intent"] + ie["emotion"] + ie["entities_f1"]
-               + risk["risk_overall"] + reply["must_contain"] + reply["must_not_ok"]) / 6
+    quality = (
+        ie["intent"]
+        + ie["emotion"]
+        + ie["entities_f1"]
+        + risk["risk_overall"]
+        + reply["must_contain"]
+        + reply["must_not_ok"]
+    ) / 6
     return {
         "id": case["id"],
         "category": case.get("category"),
-        "intent": ie["intent"], "intent_primary_ok": ie["intent_primary_ok"],
+        "intent": ie["intent"],
+        "intent_primary_ok": ie["intent_primary_ok"],
         "intent_secondary_ok": ie["intent_secondary_ok"],
-        "emotion": ie["emotion"], "entities_f1": ie["entities_f1"],
-        "risk_overall": risk["risk_overall"], "risk_detail": risk,
-        "reply_must_contain": reply["must_contain"], "reply_must_not_ok": reply["must_not_ok"],
+        "emotion": ie["emotion"],
+        "entities_f1": ie["entities_f1"],
+        "risk_overall": risk["risk_overall"],
+        "risk_detail": risk,
+        "reply_must_contain": reply["must_contain"],
+        "reply_must_not_ok": reply["must_not_ok"],
         "reply_violations": reply["violations"],
         "judge": judge,
         "quality": round(quality, 3),
@@ -300,6 +315,7 @@ def build_report(cases: list[dict], results: list[dict], use_judge: bool) -> str
 
     def avg(k: str) -> float:
         return round(sum(r[k] for r in results) / n, 3)
+
     lines = ["# InsightCopilot · Agent 评测报告", ""]
     lines.append(f"- 用例数：**{len(results)}**    评分开关：{'含 LLM-Judge' if use_judge else '纯规则'}")
     lines.append(f"- 意图准确率：{avg('intent')}    情绪准确率：{avg('emotion')}    实体 F1：{avg('entities_f1')}")
@@ -336,8 +352,10 @@ def build_report(cases: list[dict], results: list[dict], use_judge: bool) -> str
                 f"{j['accuracy']} | {j['actionability']} | {j['overall']} |"
             )
     lines.append("")
-    lines.append("> 风险维度任一漏判（adverse_reaction / medical_visit / regulatory 错判）"
-                 "都会显著拉低 risk_overall，请优先复查 low-score case。")
+    lines.append(
+        "> 风险维度任一漏判（adverse_reaction / medical_visit / regulatory 错判）"
+        "都会显著拉低 risk_overall，请优先复查 low-score case。"
+    )
     return "\n".join(lines)
 
 
@@ -369,8 +387,10 @@ def main(argv: list[str] | None = None) -> int:
             actual = run_case(case)
             sc = score_case(case, actual, args.judge)
             results.append(sc)
-            print(f"  [{sc['id']}] quality={sc['quality']} risk={sc['risk_overall']} "
-                  f"tokens={sc['cost']['total_tokens']} calls={sc['cost']['calls']}")
+            print(
+                f"  [{sc['id']}] quality={sc['quality']} risk={sc['risk_overall']} "
+                f"tokens={sc['cost']['total_tokens']} calls={sc['cost']['calls']}"
+            )
         except Exception as exc:
             print(f"  [FAIL] {case['id']}: {exc}")
 

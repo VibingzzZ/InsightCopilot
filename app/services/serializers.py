@@ -155,6 +155,7 @@ def ticket_item(ticket: ServiceTicket, events: list[ServiceEvent] | None = None)
 
 def product_item(product: Product) -> dict[str, Any]:
     """商品库序列化：把逗号分隔的成分/肤质拆成列表，金额转为可读展示。"""
+
     def _split(value: str | None) -> list[str]:
         return [part.strip() for part in (value or "").replace("，", ",").split(",") if part.strip()]
 

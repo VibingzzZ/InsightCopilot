@@ -48,9 +48,7 @@ def confirm_action(
     """确认执行动作。按 idempotency_key 幂等：重复提交直接返回原结果。"""
     operator_id = x_operator_id or optional_operator(request) or "agent"
 
-    existing = db.scalar(
-        select(ActionExecution).where(ActionExecution.idempotency_key == payload.idempotency_key)
-    )
+    existing = db.scalar(select(ActionExecution).where(ActionExecution.idempotency_key == payload.idempotency_key))
     if existing is not None:
         return ok(
             request,

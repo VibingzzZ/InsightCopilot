@@ -23,7 +23,9 @@ router = APIRouter(prefix="/api/promises", tags=["promises"])
 def list_promises(
     request: Request,
     db: Annotated[DbSession, Depends(get_db)],
-    status: str | None = Query(None, description="按状态筛选：pending_confirmation/active/due_soon/overdue/fulfilled/changed/cancelled"),
+    status: str | None = Query(
+        None, description="按状态筛选：pending_confirmation/active/due_soon/overdue/fulfilled/changed/cancelled"
+    ),
     session_id: str | None = Query(None),
     consumer_id: str | None = Query(None),
     risk_level: str | None = Query(None, description="按会话风险等级筛选：L0/L1/L2/L3"),
