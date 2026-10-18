@@ -12,7 +12,6 @@ from datetime import datetime
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session as DbSession
 
-from app.agents import rules
 from app.core.masking import mask_quote
 from app.core.time_utils import utc_now
 from app.models import AIAnalysis, Consumer, Message, Promise, SalesOrder, ServiceSession, ServiceTicket
@@ -185,36 +184,30 @@ def _resolve_reasons(
             evidence = _load_json_list(analysis.evidence_message_ids)
             return reasons, evidence
 
-    result = rules.analyze(
-        session=session,
-        messages=messages,
-        orders=orders,
-        tickets=[
-            rules.TicketContext(
-                ticket_id=ticket.ticket_id,
-                ticket_type=ticket.ticket_type,
-                status=ticket.status,
-                priority=ticket.priority,
-            )
-            for ticket in tickets
-        ],
-        promises=[
-            rules.PromiseContext(
-                promise_id=promise.promise_id,
-                session_id=promise.session_id,
-                status=promise.status,
-                statement=promise.statement,
-                promise_type=promise.promise_type,
-                due_at=promise.due_at,
-                verification_type=promise.verification_type,
-                verification_ref=promise.verification_ref,
-            )
-            for promise in promises
-        ],
-        consumer_session_count=consumer_session_count,
-        now=now,
-    )
-    return result.risk_reasons, result.evidence_message_ids
+    # 无 Agent 分析记录时，用无外部依赖的兜底规则生成风险理由，
+    # 避免依赖已下线的 rules 模块。
+    return _fallback_reasons(tickets=tickets, promises=promises, now=now)
+
+
+def _fallback_reasons(
+    *,
+    tickets: list[ServiceTicket],
+    promises: list[Promise],
+    now: datetime,
+) -> tuple[list[str], list[str]]:
+    """无分析记录时的轻量兜底：基于工单/承诺状态给出主管可读的风险理由。"""
+    reasons: list[str] = []
+    evidence: list[str] = []
+    open_tickets = [t for t in tickets if t.status not in CLOSED_TICKET_STATUSES]
+    if open_tickets:
+        reasons.append(f"存在 {len(open_tickets)} 个未闭环工单")
+    overdue = [p for p in promises if p.status == "overdue"]
+    if overdue:
+        reasons.append(f"存在 {len(overdue)} 条已超时服务承诺")
+    due_soon = [p for p in promises if p.status == "due_soon"]
+    if due_soon:
+        reasons.append(f"存在 {len(due_soon)} 条即将到期服务承诺")
+    return reasons, evidence
 
 
 def _evidence_refs(evidence_ids: list[str], messages_by_id: dict[str, Message]) -> list[dict]:

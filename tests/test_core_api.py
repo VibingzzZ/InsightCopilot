@@ -182,6 +182,8 @@ def test_ticket_patch_not_found(seeded_client: TestClient) -> None:
 
 # ------------------------------------------------------------ 范围外模块已下线（未挂载）
 def test_deprecated_routes_unmounted(seeded_client: TestClient) -> None:
+    # 副驾 HTTP / SSE 旧入口仍保持未挂载（能力已迁移到 WS /api/chat/stream/{id}）
     assert seeded_client.get("/api/sessions/S00005/copilot").status_code == 404
     assert seeded_client.get("/api/sessions/S00005/stream").status_code == 404
-    assert seeded_client.get("/api/risk-queue").status_code == 404
+    # 风险队列 /api/risk-queue 已重新挂载并投入初赛闭环，不再属于「未挂载」范围
+    assert seeded_client.get("/api/risk-queue").status_code == 200

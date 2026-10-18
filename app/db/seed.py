@@ -22,6 +22,7 @@ from app.models import (
     AuditLog,
     Consumer,
     Message,
+    Product,
     Promise,
     SalesOrder,
     ServiceEvent,
@@ -63,6 +64,8 @@ def apply_baseline(db: Session, scenario: str = "all", now: datetime | None = No
     db.flush()
     for item in data.events:
         db.merge(_event_from_item(item))
+    for item in data.products:
+        db.merge(Product(**item, updated_at=refreshed_at))
 
     db.flush()
     return _counts(db)
@@ -201,5 +204,6 @@ def _counts(db: Session) -> dict[str, int]:
         "orders": count(SalesOrder),
         "tickets": count(ServiceTicket),
         "promises": count(Promise),
+        "products": count(Product),
         "events": count(ServiceEvent),
     }

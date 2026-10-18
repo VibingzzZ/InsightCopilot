@@ -16,7 +16,7 @@ RiskLevel = Literal["L0", "L1", "L2", "L3"]
 AdverseGrade = Literal["L1", "L2", "L3"]  # L0 不进不良反应专项
 ModelRoute = Literal["fast", "reasoning", "vision", "mock"]
 AgentMode = Literal["auto", "real", "mock"]
-SourceType = Literal["chat", "order", "ticket", "rule", "action", "image"]
+SourceType = Literal["chat", "order", "ticket", "rule", "action", "image", "product"]
 PromiseType = Literal["refund", "follow_up", "replenishment", "logistics", "other"]
 OwnerType = Literal["store", "agent", "team", "system"]
 
@@ -39,6 +39,7 @@ class CopilotRequest(BaseModel):
     messages: list[dict[str, Any]] = Field(default_factory=list)
     orders: list[dict[str, Any]] = Field(default_factory=list)
     tickets: list[dict[str, Any]] = Field(default_factory=list)
+    products: list[dict[str, Any]] = Field(default_factory=list)  # 商品库（售前推荐的事实来源）
     promises: list[dict[str, Any]] = Field(default_factory=list)
     events: list[dict[str, Any]] = Field(default_factory=list)
     mode: AgentMode = "auto"

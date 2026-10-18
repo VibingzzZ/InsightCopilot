@@ -256,6 +256,16 @@ def append_message(
     db.commit()
     db.refresh(message)
 
+    # 承诺抽取钩子：仅客服「最终发送」的消息触发（PR-02）。
+    # 草稿（send=False）不进入承诺，避免把尚未确认的话术误登记为承诺。
+    promise = None
+    if payload.role == "agent" and payload.send:
+        from app.services import promise_service
+
+        promise = promise_service.create_promise_from_message(
+            db, session_id=session_id, message_id=message_id, text=payload.content
+        )
+
     return {
         "message_id": message_id,
         "event_id": event_id,
@@ -263,7 +273,7 @@ def append_message(
         "seq_no": next_seq,
         "sent_at": to_api_time(now_iso),
         "send": payload.send,
-        "promise_extract_job_id": None,  # 承诺抽取链路暂未接入
+        "promise": promise,  # 命中的承诺（已落库且 pending_confirmation），未命中为 None
     }
 
 

@@ -10,7 +10,17 @@ from pydantic import BaseModel, ValidationError
 
 from app.core.masking import mask_alipay_account
 from app.core.time_utils import seconds_until, to_api_time
-from app.models import AIAnalysis, Consumer, Message, Promise, SalesOrder, ServiceEvent, ServiceSession, ServiceTicket
+from app.models import (
+    AIAnalysis,
+    Consumer,
+    Message,
+    Product,
+    Promise,
+    SalesOrder,
+    ServiceEvent,
+    ServiceSession,
+    ServiceTicket,
+)
 from app.schemas.schemas import (
     AdverseReactionDetail,
     LogisticsDetail,
@@ -141,6 +151,26 @@ def ticket_item(ticket: ServiceTicket, events: list[ServiceEvent] | None = None)
     if events is not None:
         item["events"] = [event_item(e) for e in events]
     return item
+
+
+def product_item(product: Product) -> dict[str, Any]:
+    """商品库序列化：把逗号分隔的成分/肤质拆成列表，金额转为可读展示。"""
+
+    def _split(value: str | None) -> list[str]:
+        return [part.strip() for part in (value or "").replace("，", ",").split(",") if part.strip()]
+
+    return {
+        "product_id": product.product_id,
+        "name": product.name,
+        "category": product.category,
+        "key_ingredients": _split(product.key_ingredients),
+        "suitable_skin_types": _split(product.suitable_skin_types),
+        "benefits": product.benefits,
+        "cautions": product.cautions,
+        "price_display": money_display(product.price_cent),
+        "price_cent": product.price_cent,
+        "status": product.status,
+    }
 
 
 def sanitize_ticket_detail(ticket_type: str, detail_json: str | None) -> dict[str, Any]:

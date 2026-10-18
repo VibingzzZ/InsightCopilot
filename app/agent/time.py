@@ -20,7 +20,8 @@ _WORKDAYS_RE = re.compile(_NUM + r"\s*个?\s*工作日(?:之?内)?")
 _DAYS_RE = re.compile(_NUM + r"\s*个?\s*(?:自然日|天)(?:之?内)?")
 _TODAY_CLOCK_RE = re.compile(r"今天\s*(上午|下午|晚上|中午)?\s*(\d{1,2})\s*[:点]\s*(\d{0,2})")
 _TODAY_EOD_RE = re.compile(r"今天\s*(?:下班前|下班之前|下班以前|之内|内)")
-_TOMORROW_RE = re.compile(r"明天\s*(上午|中午|下午|晚上)?")
+_TOMORROW_RE = re.compile(r"(明天|后天)\s*(上午|中午|下午|晚上)?")
+_CLOCK_RE = re.compile(r"(\d{1,2})\s*[:点]\s*(\d{0,2})")
 
 
 def _cn_to_int(token: str) -> int | None:
@@ -84,9 +85,22 @@ def _parse(expression: str, now: datetime, holidays: set[str]) -> datetime | Non
 
     match = _TOMORROW_RE.search(expression)
     if match:
-        period = match.group(1)
+        day_offset = 2 if match.group(1) == "后天" else 1
+        period = match.group(2)
         hour = 12 if period in {"上午", "中午"} else END_OF_BUSINESS_HOUR
-        return _at(now.date() + timedelta(days=1), hour)
+        minute = 0
+        # 解析紧跟其后的具体钟点（如「明天上午 10 点」），避免只匹配到时段而丢弃具体时刻
+        clk = _CLOCK_RE.search(expression)
+        if clk:
+            hour = int(clk.group(1))
+            minute = int(clk.group(2)) if clk.group(2) else 0
+            if period in {"下午", "晚上"} and hour < 12:
+                hour += 12
+            if period == "中午" and hour < 12:
+                hour += 12
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            hour, minute = 12, 0
+        return datetime.combine(now.date() + timedelta(days=day_offset), time(hour=hour, minute=minute), tzinfo=TZ)
 
     match = _WORKDAYS_RE.search(expression)
     if match:

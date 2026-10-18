@@ -246,3 +246,20 @@ class AuditLog(Base):
     before_json = Column(Text, nullable=True)
     after_json = Column(Text, nullable=True)
     created_at = Column(Text, default=lambda: utc_now().isoformat(), nullable=False)
+
+
+# 11. 商品库表（公司产品信息，售前推荐的事实来源）
+class Product(Base):
+    __tablename__ = "product"
+
+    product_id = Column(Text, primary_key=True)
+    name = Column(Text, nullable=False)
+    category = Column(Text, nullable=False)  # 洁面 / 精华 / 面霜 / 面膜 / 防晒 / 乳液 ...
+    key_ingredients = Column(Text, nullable=True)  # 逗号分隔的核心成分
+    suitable_skin_types = Column(Text, nullable=True)  # 逗号分隔的适用肤质
+    benefits = Column(Text, nullable=True)  # 主要功效
+    cautions = Column(Text, nullable=True)  # 注意事项 / 慎用人群
+    price_cent = Column(Integer, default=0, nullable=False)
+    status = Column(Text, default="on_shelf", nullable=False)  # on_shelf / off_shelf
+    created_at = Column(Text, default=lambda: utc_now().isoformat(), nullable=False)
+    updated_at = Column(Text, default=lambda: utc_now().isoformat(), nullable=False)

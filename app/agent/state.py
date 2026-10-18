@@ -32,6 +32,7 @@ class CustomerState(TypedDict):
     messages: list[dict]
     orders: list[dict]
     tickets: list[dict]
+    products: list[dict]  # 商品库（售前推荐的事实来源）
     promises: list[dict]
     events: list[dict]
     mode: str  # auto / real / mock
@@ -49,6 +50,7 @@ class CustomerState(TypedDict):
     # 数据层：从 orders / tickets 关联出的当前任务相关事实
     linked_order: dict
     linked_tickets: list[dict]
+    matched_products: list[dict]  # 售前咨询匹配到的在售商品
 
     # 证据层（add reducer：节点只返回新增条目，LangGraph 自动累加）
     evidence: Annotated[list[EvidenceRef], add]
