@@ -223,7 +223,8 @@ def append_message(
         seq_no=next_seq,
         sent_at=now_iso,
         role=payload.role,
-        sender_label=payload.sender_label or ("客服" if payload.role == "agent" else ("消费者" if payload.role in ("buyer", "customer") else "系统")),
+        sender_label=payload.sender_label
+        or ("客服" if payload.role == "agent" else ("消费者" if payload.role in ("buyer", "customer") else "系统")),
         content_type=content_type,
         message_text=payload.content,
         image_path=image_path,
@@ -241,9 +242,13 @@ def append_message(
                 session_id=session_id,
                 event_type="message_sent" if payload.role == "agent" else "message_received",
                 occurred_at=now_iso,
-                actor_type="operator" if payload.role == "agent" else ("consumer" if payload.role in ("buyer", "customer") else "system"),
+                actor_type="operator"
+                if payload.role == "agent"
+                else ("consumer" if payload.role in ("buyer", "customer") else "system"),
                 actor_id=operator_id,
-                title="客服发送消息" if payload.role == "agent" else ("消费者发送消息" if payload.role in ("buyer", "customer") else "系统消息"),
+                title="客服发送消息"
+                if payload.role == "agent"
+                else ("消费者发送消息" if payload.role in ("buyer", "customer") else "系统消息"),
                 content=payload.content,
                 source_type="chat",
                 source_id=message_id,
