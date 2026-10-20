@@ -214,6 +214,9 @@ def append_message(
     ) + 1
 
     message_id = f"m-{uuid.uuid4().hex[:12]}"
+    # 附件：图片类标记为 image 类型并写入 image_path，供视觉识别链路消费；其余仅挂接路径。
+    image_path = payload.attachment
+    content_type = "image" if (payload.attachment and payload.attachment_kind == "image") else "text"
     message = Message(
         message_id=message_id,
         session_id=session_id,
@@ -223,6 +226,7 @@ def append_message(
         sender_label=payload.sender_label or ("客服" if payload.role == "agent" else ("消费者" if payload.role in ("buyer", "customer") else "系统")),
         content_type="text",
         message_text=payload.content,
+        image_path=image_path,
         is_target_buyer_message=False,
     )
     db.add(message)
@@ -252,6 +256,16 @@ def append_message(
     db.commit()
     db.refresh(message)
 
+    # 承诺抽取钩子：仅客服「最终发送」的消息触发（PR-02）。
+    # 草稿（send=False）不进入承诺，避免把尚未确认的话术误登记为承诺。
+    promise = None
+    if payload.role == "agent" and payload.send:
+        from app.services import promise_service
+
+        promise = promise_service.create_promise_from_message(
+            db, session_id=session_id, message_id=message_id, text=payload.content
+        )
+
     return {
         "message_id": message_id,
         "event_id": event_id,
@@ -259,7 +273,7 @@ def append_message(
         "seq_no": next_seq,
         "sent_at": to_api_time(now_iso),
         "send": payload.send,
-        "promise_extract_job_id": None,  # 承诺抽取链路暂未接入
+        "promise": promise,  # 命中的承诺（已落库且 pending_confirmation），未命中为 None
     }
 
 

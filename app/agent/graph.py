@@ -2,15 +2,13 @@ from langgraph.graph import END, START, StateGraph
 
 from app.agent.nodes.adverse import adverse_node
 from app.agent.nodes.context import context_node
-from app.agent.nodes.emotion import emotion_node
 from app.agent.nodes.evidence import evidence_node
 from app.agent.nodes.fact_check import fact_check_node
-from app.agent.nodes.intent import intent_node
 from app.agent.nodes.reply import reply_node
 from app.agent.nodes.risk_engine import risk_engine_node
-from app.agent.nodes.risk_extraction import risk_extraction_node
 from app.agent.nodes.summary import summary_node
 from app.agent.nodes.tool_query import tool_query_node
+from app.agent.nodes.triage import triage_node
 from app.agent.nodes.vision import vision_node
 from app.agent.state import CustomerState
 
@@ -23,9 +21,8 @@ def route_by_risk(state: CustomerState) -> str:
 builder = StateGraph(CustomerState)
 
 builder.add_node("context", context_node)
-builder.add_node("intent", intent_node)
-builder.add_node("emotion", emotion_node)
-builder.add_node("risk_extraction", risk_extraction_node)
+# 降本：intent + emotion + risk_extraction 三次调用合并为一次（triage）
+builder.add_node("triage", triage_node)
 builder.add_node("risk_engine", risk_engine_node)
 builder.add_node("tool_query", tool_query_node)
 builder.add_node("evidence", evidence_node)
@@ -36,10 +33,8 @@ builder.add_node("reply", reply_node)
 builder.add_node("fact_check", fact_check_node)
 
 builder.add_edge(START, "context")
-builder.add_edge("context", "intent")
-builder.add_edge("intent", "emotion")
-builder.add_edge("emotion", "risk_extraction")
-builder.add_edge("risk_extraction", "risk_engine")
+builder.add_edge("context", "triage")
+builder.add_edge("triage", "risk_engine")
 # 事实与证据在分支之前完成，保证两条路都拿得到证据
 builder.add_edge("risk_engine", "tool_query")
 builder.add_edge("tool_query", "evidence")

@@ -53,6 +53,37 @@ def _ticket_evidence(ticket: dict) -> EvidenceRef | None:
     )
 
 
+def _product_evidence(product: dict) -> EvidenceRef | None:
+    """在售商品证据：把推荐所需的关键信息压成一句可回溯的引文。"""
+    product_id = str(product.get("product_id") or "")
+    name = str(product.get("name") or "")
+    if not product_id or not name:
+        return None
+
+    def _as_list(value) -> list[str]:
+        if isinstance(value, list):
+            return [str(v).strip() for v in value if str(v).strip()]
+        return [part.strip() for part in str(value or "").replace("，", ",").split(",") if part.strip()]
+
+    parts = [f"在售商品「{name}」（{product.get('category', '')}）"]
+    ingredients = _as_list(product.get("key_ingredients"))
+    if ingredients:
+        parts.append(f"核心成分：{'、'.join(ingredients)}")
+    skins = _as_list(product.get("suitable_skin_types"))
+    if skins:
+        parts.append(f"适合肤质：{'、'.join(skins)}")
+    if product.get("benefits"):
+        parts.append(f"主要功效：{product['benefits']}")
+    if product.get("cautions"):
+        parts.append(f"注意事项：{product['cautions']}")
+
+    return EvidenceRef(
+        source_type="product",
+        source_id=product_id,
+        quote="｜".join(parts),
+    )
+
+
 def evidence_node(state: CustomerState) -> dict:
     items: list[EvidenceRef] = []
 
@@ -64,6 +95,11 @@ def evidence_node(state: CustomerState) -> dict:
         ticket_item = _ticket_evidence(ticket)
         if ticket_item:
             items.append(ticket_item)
+
+    for product in state.get("matched_products") or []:
+        product_item = _product_evidence(product)
+        if product_item:
+            items.append(product_item)
 
     # evidence 字段是 add reducer，这里只返回新增条目，框架自动累加
     return {"evidence": items}

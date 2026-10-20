@@ -60,7 +60,8 @@ class ActionPreviewRequest(BaseModel):
 
 
 class ActionConfirmRequest(BaseModel):
-    action_id: str
+    action_id: str | None = None
+    action_type: ActionType
     idempotency_key: str = Field(min_length=8, max_length=128)
     payload: dict[str, Any] | None = None
 
@@ -101,6 +102,16 @@ class DemoResetRequest(BaseModel):
     preserve_import: bool = True
 
 
+class TicketCreateRequest(BaseModel):
+    """创建工单（POST /api/tickets）：从副驾/动作确认的 draft_payload 预填。"""
+
+    session_id: str = Field(min_length=1)
+    ticket_type: str = Field(min_length=1, max_length=50)
+    priority: TicketPriority = "normal"
+    reason: str | None = Field(None, max_length=500)
+    draft_payload: dict[str, Any] = Field(default_factory=dict)
+
+
 class TicketUpdateRequest(BaseModel):
     """工单字段式更新（PATCH /api/tickets/{ticket_id}）：至少提供一个字段。
 
@@ -122,3 +133,7 @@ class SessionMessageCreateRequest(BaseModel):
     send: bool = True  # 是否立即发送（否则仅保存草稿）
     client_message_id: str | None = Field(default=None, max_length=64)
     sender_label: str | None = Field(default=None, max_length=50)
+    # 附件：由 /api/uploads 返回的文件路径（path）或 URL（url）。
+    # kind=image 时会将消息标记为图片类型并写入 image_path，供视觉识别链路消费。
+    attachment: str | None = Field(default=None, max_length=1024)
+    attachment_kind: Literal["image", "attachment"] | None = Field(default=None)

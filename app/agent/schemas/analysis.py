@@ -34,6 +34,34 @@ class RiskExtraction(BaseModel):
     regulatory_complaint: bool = Field(description="是否提及监管投诉、平台投诉、曝光、律师或明确威胁")
 
 
+class TriageAnalysis(BaseModel):
+    """合并 Schema：把 intent + emotion + risk_extraction 三次调用压成一次（降本）。
+
+    三个子任务的输入都只有当前消息，合并后单次调用即产出全部字段，
+    每次分析少 2 次模型调用、少两遍重复的 prompt 头部与消息体。
+    """
+
+    # —— 意图（原 IntentAnalysis）——
+    intent_primary: str = Field(description="一级场景，如 订单服务 / 不良反应 / 物流问题 / 售前咨询 / 其他")
+    intent_secondary: str = Field(description="二级场景；无法判断时填 其他")
+    entities: list[str] = Field(default_factory=list, description="订单号、商品名、金额、批次号、时间等实体")
+    # —— 情绪（原 EmotionAnalysis）——
+    emotion: str = Field(description="当前主要情绪，如 平静 / 焦虑 / 不满 / 愤怒 / 急切")
+    emotion_trend: str = Field(default="flat", description="情绪变化方向：up 上升 / flat 持平 / down 缓和")
+    # —— 风险事实（原 RiskExtraction）——
+    adverse_reaction: bool = Field(description="是否出现不良反应（红肿、刺痛、瘙痒、起疹、爆痘等）")
+    severity: str = Field(
+        default="none",
+        description=(
+            "不适程度：none 无不适 / mild 轻微泛红、刺痒或局部小颗粒且未加重 / "
+            "obvious 范围扩大、持续加重、明显红肿 / severe 呼吸困难、眼部严重异常、住院"
+        ),
+    )
+    symptoms: list[str] = Field(default_factory=list, description="症状关键词；无则空列表")
+    medical_visit: bool = Field(description="是否明确表示已就医/已在医院")
+    regulatory_complaint: bool = Field(description="是否提及监管投诉、平台投诉、曝光、律师或明确威胁")
+
+
 class ReplyDraft(BaseModel):
     reply: str = Field(description="生成给客服编辑的回复文案")
 
@@ -58,3 +86,9 @@ class VisionExtraction(BaseModel):
 class TrajectorySummary(BaseModel):
     summary: str = Field(description="跨会话轨迹摘要，只保留与当前任务相关的事件")
     relevant_event_ids: list[str] = Field(default_factory=list, description="摘要引用的历史事件 ID，用于溯源")
+
+
+class RewriteResult(BaseModel):
+    """轻量草稿改写的结构化输出（Task 02/03）。"""
+
+    rewritten: str = Field(description="改写后的草稿全文")

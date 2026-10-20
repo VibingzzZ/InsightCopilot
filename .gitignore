@@ -24,7 +24,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
-
+node_modules/
 # IDE
 .idea/
 .vscode/
@@ -38,3 +38,6 @@ Thumbs.db
 *.db-shm
 *.db-wal
 # *.db (如果需要忽略所有 db 文件，可以取消注释此行)
+
+
+.workBuddy/

@@ -34,6 +34,7 @@ def run_structured[T: BaseModel](
     route: str,
     mode: str,
     fallback: Callable[[], T],
+    session_id: str | None = None,
 ) -> tuple[T, bool]:
     """按路由调用模型；返回 (结构化结果, 是否降级)。
 
@@ -45,14 +46,22 @@ def run_structured[T: BaseModel](
     model = gateway.model_name_for(route)
 
     if mode == "mock":
-        cost.record_call(route=route, model="", mode=mode, latency_ms=0, degraded=True)
+        cost.record_call(route=route, model="", mode=mode, latency_ms=0, degraded=True, session_id=session_id)
         return fallback(), True
 
     if not gateway.is_available(route):
         if mode == "real":
             raise ModelUnavailableError(f"mode=real 但路由 {route} 未配置模型，无法执行")
         logger.warning("模型路由 %s 不可用，降级到 Mock 结果", route)
-        cost.record_call(route=route, model=model, mode=mode, latency_ms=0, error="route unavailable", degraded=True)
+        cost.record_call(
+            route=route,
+            model=model,
+            mode=mode,
+            latency_ms=0,
+            error="route unavailable",
+            degraded=True,
+            session_id=session_id,
+        )
         return fallback(), True
 
     parser = parser_for(schema)
@@ -70,6 +79,7 @@ def run_structured[T: BaseModel](
             input_tokens=token_capture.input_tokens,
             output_tokens=token_capture.output_tokens,
             total_tokens=token_capture.total_tokens,
+            session_id=session_id,
         )
         return result, False
     except Exception as exc:
@@ -77,5 +87,13 @@ def run_structured[T: BaseModel](
         if mode == "real":
             raise
         logger.exception("模型调用失败，降级到 Mock 结果（route=%s）", route)
-        cost.record_call(route=route, model=model, mode=mode, latency_ms=latency_ms, error=str(exc), degraded=True)
+        cost.record_call(
+            route=route,
+            model=model,
+            mode=mode,
+            latency_ms=latency_ms,
+            error=str(exc),
+            degraded=True,
+            session_id=session_id,
+        )
         return fallback(), True

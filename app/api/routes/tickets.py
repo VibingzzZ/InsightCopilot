@@ -7,10 +7,32 @@ from sqlalchemy.orm import Session as DbSession
 
 from app.core.deps import get_db
 from app.core.envelope import ok
-from app.schemas.api import TicketUpdateRequest
+from app.schemas.api import TicketCreateRequest, TicketUpdateRequest
 from app.services import ticket_service
 
 router = APIRouter(prefix="/api/tickets", tags=["tickets"])
+
+
+@router.post("")
+def create_ticket(
+    request: Request,
+    payload: TicketCreateRequest,
+    db: Annotated[DbSession, Depends(get_db)],
+    x_operator_id: str | None = Header(None, alias="X-Operator-ID", description="操作人标识，写入审计事件"),
+) -> dict:
+    """创建工单（如不良反应专项工单），从 draft_payload 预填已知字段。"""
+    return ok(
+        request,
+        ticket_service.create_ticket(
+            db,
+            session_id=payload.session_id,
+            ticket_type=payload.ticket_type,
+            draft_payload=payload.draft_payload,
+            priority=payload.priority,
+            reason=payload.reason,
+            operator_id=x_operator_id,
+        ),
+    )
 
 
 @router.get("/{ticket_id}")

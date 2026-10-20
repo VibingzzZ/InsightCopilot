@@ -22,6 +22,33 @@ logger = logging.getLogger("app.agent.cost")
 
 _current_session: contextvars.ContextVar[str | None] = contextvars.ContextVar("cost_session_id", default=None)
 
+# 模型单价表（¥ / 每百万 token）。用于把 token 用量折算为可展示的「应用成本」。
+# 取值参考官方公开定价，演示用；换模型时在 .env 调整 MODEL_* 并同步此处即可。
+MODEL_PRICING: dict[str, dict[str, float]] = {
+    "deepseek-chat": {"input": 1.0, "output": 2.0},
+    "deepseek-reasoner": {"input": 4.0, "output": 16.0},
+    "deepseek-flash": {"input": 1.0, "output": 2.0},  # 视作 deepseek-chat 档
+    "qwen-plus": {"input": 0.8, "output": 2.0},
+    "qwen-turbo": {"input": 0.3, "output": 0.6},
+    "default": {"input": 1.0, "output": 2.0},
+}
+
+
+def model_price(model: str) -> dict[str, float]:
+    return MODEL_PRICING.get(model) or MODEL_PRICING["default"]
+
+
+def compute_cost_yuan(model: str, input_tokens: int, output_tokens: int) -> float:
+    """按模型单价把 token 折算成 ¥（精确浮点，保留小额精度）。降级/Mock 调用不计费。"""
+    price = model_price(model)
+    cost = (input_tokens / 1_000_000) * price["input"] + (output_tokens / 1_000_000) * price["output"]
+    return round(cost, 6)
+
+
+def format_yuan(cost_yuan: float) -> str:
+    """¥ 字符串，保留 4 位小数以体现「分厘级」的小额成本（如 ¥0.0020）。"""
+    return f"\u00a5{cost_yuan:.4f}"
+
 
 @dataclass
 class ModelCallRecord:
@@ -35,7 +62,8 @@ class ModelCallRecord:
     total_tokens: int
     error: str | None
     degraded: bool
-    started_at: str
+    started_at: str = ""
+    cost_yuan: float = 0.0
 
 
 class TokenCapture(BaseCallbackHandler):
@@ -84,10 +112,17 @@ def record_call(
     total_tokens: int = 0,
     error: str | None = None,
     degraded: bool = False,
+    session_id: str | None = None,
 ) -> None:
-    """记录一次模型调用（含 Mock / 降级调用，token 为 0）。"""
+    """记录一次模型调用（含 Mock / 降级调用，token 为 0）。
+
+    session_id 可显式传入以覆盖 contextvar：LangGraph 在异步图中执行同步节点时
+    可能丢 contextvar，由节点从 state 显式带参更稳；缺省时回退到 contextvar。
+    """
+    sid = session_id if session_id is not None else _current_session.get()
+    cost_yuan = 0.0 if degraded else compute_cost_yuan(model, input_tokens, output_tokens)
     rec = ModelCallRecord(
-        session_id=_current_session.get(),
+        session_id=sid,
         route=route,
         model=model,
         mode=mode,
@@ -98,6 +133,7 @@ def record_call(
         error=error,
         degraded=degraded,
         started_at=datetime.now(UTC).isoformat(),
+        cost_yuan=cost_yuan,
     )
     with _lock:
         _records.append(rec)
@@ -114,13 +150,37 @@ def clear_call_logs() -> None:
         _records.clear()
 
 
-def session_totals(session_id: str) -> dict[str, int]:
-    """按会话聚合：总调用数、总 token、总耗时。"""
+def session_totals(session_id: str) -> dict[str, int | float | str]:
+    """按会话聚合：总调用数、总 token、总耗时、总成本（¥ 数值 + 展示串）。"""
     calls = [r for r in get_call_logs() if r.session_id == session_id]
+    cost = sum(r.cost_yuan for r in calls)
     return {
         "calls": len(calls),
         "input_tokens": sum(r.input_tokens for r in calls),
         "output_tokens": sum(r.output_tokens for r in calls),
         "total_tokens": sum(r.total_tokens for r in calls),
         "latency_ms": sum(r.latency_ms for r in calls),
+        "cost_yuan": cost,  # 数值型 ¥，便于前端直接格式化
+        "cost_yuan_display": format_yuan(cost),
+        "cost_cent": int(round(cost * 100)),
+        "degraded": sum(1 for r in calls if r.degraded),
+    }
+
+
+def rollup(session_ids: list[str]) -> dict[str, int | float | str]:
+    """跨多个会话聚合（用于「一个用户所有对话」的成本汇总）。"""
+    ids = set(session_ids)
+    calls = [r for r in get_call_logs() if r.session_id in ids]
+    cost = sum(r.cost_yuan for r in calls)
+    return {
+        "sessions": len({r.session_id for r in calls}),
+        "calls": len(calls),
+        "input_tokens": sum(r.input_tokens for r in calls),
+        "output_tokens": sum(r.output_tokens for r in calls),
+        "total_tokens": sum(r.total_tokens for r in calls),
+        "latency_ms": sum(r.latency_ms for r in calls),
+        "cost_yuan": cost,  # 数值型 ¥
+        "cost_yuan_display": format_yuan(cost),
+        "cost_cent": int(round(cost * 100)),
+        "degraded": sum(1 for r in calls if r.degraded),
     }

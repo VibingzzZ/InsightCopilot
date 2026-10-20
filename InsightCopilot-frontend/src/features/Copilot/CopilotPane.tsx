@@ -3,6 +3,7 @@ import { ChevronRight, Sparkles, AlertTriangle, CheckCircle2, ShieldAlert, Clock
 import { Conversation, Action } from '../../types';
 import { useUIStore } from '../../store/useUIStore';
 import { useChatStore } from '../../store/useChatStore';
+import { agentSocket } from '../../services/socket';
 import styles from './CopilotPane.module.css';
 
 function SectionTitle({ children, action, onAction }: { children: string; action?: string; onAction?: () => void }) { 
@@ -16,24 +17,27 @@ function SectionTitle({ children, action, onAction }: { children: string; action
 
 function InsightPanel({ conversation: c, onAccept }: { conversation: Conversation; onAccept: (draft: string) => void }) {
   const notify = useUIStore(state => state.notify);
+  const analyzing = useUIStore(state => state.analyzing);
   const remoteDraft = useChatStore(state => state.drafts[c.id]);
   const [draft, setDraft] = useState(remoteDraft || c.draft);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // 当切换会话或后端推送了新草稿时，重置本地草稿
-  useEffect(() => { setDraft(remoteDraft || c.draft); }, [c.id, c.draft, remoteDraft]);
+  // 加载态：仅当"尚无新草稿"时展示；一旦后端回写了草稿就立即展示，避免分析态把草稿盖住
+  const showLoading = isGenerating || (analyzing && !remoteDraft);
+
+  // 当切换会话或后端推送了新草稿时，重置本地草稿；改写/分析回写到达后停止 spinner
+  useEffect(() => {
+    setDraft(remoteDraft || c.draft);
+    if (remoteDraft) setIsGenerating(false);
+  }, [c.id, c.draft, remoteDraft]);
 
   const handleRegenerate = (mode: 'remake' | 'tone') => {
     setIsGenerating(true);
+    // 任务 06：通过 WebSocket 发送结构化指令，由后端轻量改写后回写真实草稿
+    const command = mode === 'tone' ? 'adjust_tone' : 'optimize_expression';
+    const params = mode === 'tone' ? { tone: 'polite' } : {};
+    agentSocket.sendCommand(command, params, draft);
     notify(mode === 'remake' ? '已向大模型发送重新生成草稿请求...' : '正在使用 AI 为您润色和调整语气...');
-    
-    // 模拟等待后端大模型返回
-    setTimeout(() => {
-      setDraft(mode === 'remake' 
-        ? "非常抱歉给您带来如此困扰。我会立即为您建立专项工单并加急处理。在处理期间也请您务必遵医嘱妥善治疗，如果有任何新的情况随时联系我。"
-        : "亲爱的，真的非常抱歉让您有这样的体验呢~ 已经火速为您升级给不良反应专员处理啦，明天上午专员会亲自联系您，请您安心休养哦~");
-      setIsGenerating(false);
-    }, 1500);
   };
 
   return (
@@ -71,7 +75,7 @@ function InsightPanel({ conversation: c, onAccept }: { conversation: Conversatio
       <section className={styles['copilot-section']}>
         <SectionTitle action="重新生成" onAction={() => handleRegenerate('remake')}>回复草稿</SectionTitle>
         <div className={styles.draft}>
-          <p>{isGenerating ? <span style={{display: 'flex', alignItems: 'center', gap: '6px', color: '#8993a1'}}><Loader2 size={12} style={{animation: 'spin 1s linear infinite'}}/> 正在思考中...</span> : draft}</p>
+          <p>{showLoading ? <span style={{display: 'flex', alignItems: 'center', gap: '6px', color: '#8993a1'}}><Loader2 size={12} style={{animation: 'spin 1s linear infinite'}}/> 正在分析买家消息...</span> : draft}</p>
           <div>
             <button disabled={isGenerating} onClick={() => onAccept(draft)}><Check size={14} />采纳草稿</button>
             <button disabled={isGenerating} onClick={() => handleRegenerate('tone')}><Sparkles size={14} />调整语气</button>
