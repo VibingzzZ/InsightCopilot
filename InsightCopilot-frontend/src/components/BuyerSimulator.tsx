@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { agentSocket } from '../services/socket';
+import { api } from '../services/api';
 import { useChatStore } from '../store/useChatStore';
 import { useUIStore } from '../store/useUIStore';
 import { ChevronDown, ChevronUp, Smartphone } from 'lucide-react';
@@ -13,21 +14,34 @@ export function BuyerSimulator() {
   const addMessage = useChatStore(state => state.addMessage);
   const notify = useUIStore(state => state.notify);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!text.trim() || !selectedId) return;
     
+    const messageContent = text.trim();
+    setText('');
+
     // 1. 模拟买家消息加入到本地聊天流
     addMessage(selectedId, {
       role: 'buyer',
-      text: text.trim(),
+      text: messageContent,
       time: '刚刚'
     });
     
     // 2. 触发后端的 LangGraph 分析（后端设定了收到的 socket 就是买家的话）
-    agentSocket.sendMessage(text.trim());
+    agentSocket.sendMessage(messageContent);
     
     notify('模拟买家发言成功，已触发后端分析');
-    setText('');
+
+    // 3. 异步持久化买家消息到数据库
+    try {
+      await api.sendSessionMessage(selectedId, {
+        role: 'buyer',
+        content: messageContent,
+        sender_label: '消费者',
+      });
+    } catch (err) {
+      console.error('Failed to persist buyer message:', err);
+    }
   };
 
   return (

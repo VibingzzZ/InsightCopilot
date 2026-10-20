@@ -27,6 +27,7 @@ export function Workspace() {
   const setSelectedId = useChatStore(state => state.setSelectedId);
   const messagesStore = useChatStore(state => state.messages);
   const addMessage = useChatStore(state => state.addMessage);
+  const setSessionMessages = useChatStore(state => state.setSessionMessages);
 
   const [composer, setComposer] = useState('');
   const [pending, setPending] = useState<{ kind: AttachmentKind; url: string; name: string } | null>(null);
@@ -45,7 +46,8 @@ export function Workspace() {
     return true;
   }), [queueFilter, query]);
 
-  const allMessages = [...selected.messages, ...(messagesStore[selected.id] ?? [])];
+  const sessionMessages = messagesStore[selected.id];
+  const allMessages = sessionMessages !== undefined ? sessionMessages : selected.messages;
 
   useEffect(() => {
     const stream = messageStreamRef.current;
@@ -57,6 +59,20 @@ export function Workspace() {
     return () => agentSocket.disconnect();
   }, [selected.id]);
 
+  useEffect(() => {
+    let isCancelled = false;
+    api.fetchSessionMessages(selected.id).then(msgs => {
+      if (!isCancelled && msgs && msgs.length > 0) {
+        setSessionMessages(selected.id, msgs);
+      }
+    }).catch(err => {
+      console.warn('Failed to load session messages from API:', err);
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, [selected.id, setSessionMessages]);
+
   const chooseConversation = (id: string) => { 
     setSelectedId(id); 
     setTab('insight'); 
@@ -65,7 +81,7 @@ export function Workspace() {
     setOverlay('none'); 
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     const text = composer.trim(); 
     if (!text && !pending) return;
     addMessage(selected.id, {
@@ -79,6 +95,15 @@ export function Workspace() {
     setComposer(''); 
     setPending(null);
     notify(text.includes('明天') || text.includes('18:00') || text.includes('小时') ? '消息已发送，识别到 1 条服务承诺' : '消息已发送');
+    try {
+      await api.sendSessionMessage(selected.id, {
+        role: 'agent',
+        content: text,
+        sender_label: '客服',
+      });
+    } catch (err) {
+      console.error('Failed to persist agent message:', err);
+    }
   };
 
   const openPicker = (kind: AttachmentKind) => {

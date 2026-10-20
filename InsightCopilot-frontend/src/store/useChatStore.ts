@@ -10,6 +10,7 @@ interface ChatState {
   drafts: Record<string, string>;
   
   setSelectedId: (id: string) => void;
+  setSessionMessages: (conversationId: string, messages: Message[]) => void;
   addMessage: (conversationId: string, message: Message) => void;
   setDraft: (conversationId: string, draft: string) => void;
   markActionDone: (conversationId: string, actionTitle: string, createsTicket: boolean) => void;
@@ -17,7 +18,7 @@ interface ChatState {
 }
 
 export const useChatStore = create<ChatState>((set) => ({
-  selectedId: 'S00015',
+  selectedId: 'S00159',
   messages: {},
   ticketCreated: {},
   completedActions: {},
@@ -25,6 +26,12 @@ export const useChatStore = create<ChatState>((set) => ({
   drafts: {},
 
   setSelectedId: (id) => set({ selectedId: id }),
+  setSessionMessages: (conversationId, messages) => set((state) => ({
+    messages: {
+      ...state.messages,
+      [conversationId]: messages,
+    },
+  })),
   addMessage: (conversationId, message) => set((state) => ({
     messages: {
       ...state.messages,
