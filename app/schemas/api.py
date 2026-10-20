@@ -117,7 +117,7 @@ class TicketUpdateRequest(BaseModel):
 class SessionMessageCreateRequest(BaseModel):
     """模拟客服发送消息 / 保存草稿。"""
 
-    role: Literal["agent", "system", "customer"] = "agent"
+    role: Literal["agent", "system", "customer", "buyer"] = "agent"
     content: str = Field(min_length=1, max_length=5000)
     send: bool = True  # 是否立即发送（否则仅保存草稿）
     client_message_id: str | None = Field(default=None, max_length=64)
