@@ -224,7 +224,7 @@ def append_message(
         sent_at=now_iso,
         role=payload.role,
         sender_label=payload.sender_label or ("客服" if payload.role == "agent" else ("消费者" if payload.role in ("buyer", "customer") else "系统")),
-        content_type="text",
+        content_type=content_type,
         message_text=payload.content,
         image_path=image_path,
         is_target_buyer_message=False,
